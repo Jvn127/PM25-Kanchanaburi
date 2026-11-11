@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PM2.5 KANCHANABURI</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Prompt:wght@400;500;600;700;800&display=swap');
+:root{--gold:#f4d06f;--deep:#102a30;--panel:#102b30ed;--line:#789d8d}
+*{box-sizing:border-box}body{margin:0;color:#f5f2dc;font-family:Prompt,system-ui;background:#173d42 url('background-kanchanaburi.png') center/cover fixed}
+body:before{content:"";position:fixed;inset:0;background:#09262caa;z-index:-1}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 22px;background:#092329e8;border-bottom:4px solid #b79b5d}
+h1{font:clamp(16px,3vw,25px) 'Press Start 2P',monospace;color:var(--gold);margin:0;text-shadow:3px 3px #573e28;line-height:1.6}.tag{font-size:11px;letter-spacing:2px;color:#d4e7d8}
+main{max-width:1600px;margin:auto;padding:14px;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px}
+.panel{background:var(--panel);border:2px solid var(--line);box-shadow:5px 5px 0 #06191c;border-radius:4px;padding:13px}
+.board-wrap{overflow-x:auto;padding:8px 2px 14px}
+#board{position:relative;width:1160px;height:770px;margin:auto;background:linear-gradient(145deg,#315c50,#183d3b);border:5px solid #b5a16a;box-shadow:inset 0 0 0 4px #476c58,8px 8px 0 #06191c;image-rendering:pixelated}
+#board:before{content:"";position:absolute;inset:105px 180px;background:radial-gradient(ellipse,#478d91 0 26%,#28594e 27% 55%,transparent 56%);opacity:.9}
+.tile{position:absolute;width:132px;height:92px;transform:translate(-50%,-50%);background:#e9dfb8;color:#1c3431;border:3px solid #4a5845;box-shadow:0 8px 0 #243e37;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:7px;clip-path:polygon(10% 0,90% 0,100% 18%,100% 82%,90% 100%,10% 100%,0 82%,0 18%)}
+.tile .stripe{position:absolute;top:0;left:0;width:100%;height:10px}.tile strong{font-size:13px;line-height:1.2;margin-top:7px;max-width:100%;overflow-wrap:anywhere}.tile small{font-size:11px;font-weight:700;margin-top:3px}.tile .owner{font-size:10px;font-weight:800}.tile.current{outline:4px solid #ffe57c;z-index:3;filter:brightness(1.13)}
+.tokens{display:flex;gap:2px;position:absolute;bottom:3px;right:4px}
+.token{width:34px;height:54px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(2px 2px 0 #263b30)}
+.avatar{width:42px;height:58px;object-fit:contain;image-rendering:pixelated;float:right;margin-left:5px;filter:drop-shadow(2px 2px 0 #132b2a)}
+.center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:410px;height:300px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;color:#fff1bf;text-shadow:2px 2px #17352d}
+.center .big{font:18px 'Press Start 2P';color:var(--gold);line-height:1.8}.center .landmark{font-size:58px;image-rendering:pixelated}
+.side{display:flex;flex-direction:column;gap:12px}.players{display:grid;grid-template-columns:1fr 1fr;gap:7px}.player{padding:9px;background:#23464a;border:2px solid #54776a}.player.active{border-color:#ffe17c;box-shadow:0 0 0 2px #9d7a39}.money{font-weight:800;font-size:18px}.muted{font-size:11px;color:#c5d9cf}.btn{background:var(--gold);color:#302719;padding:11px;border:0;border-bottom:4px solid #98743b;font-weight:800;cursor:pointer}.btn:disabled{opacity:.4}.alt{background:#31575a;color:white;border:1px solid #82a393;padding:10px;cursor:pointer}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.log{height:120px;overflow:auto;background:#071d20;padding:9px;font-size:12px;line-height:1.7}.modal{position:fixed;inset:0;background:#061719df;display:none;align-items:center;justify-content:center;padding:16px;z-index:20}.dialog{width:min(440px,100%);background:#173b3e;border:3px solid var(--gold);padding:18px;box-shadow:8px 8px #061719}.dialog h2{color:var(--gold);margin-top:0}.dialog button{margin:5px}.input{width:100%;padding:11px;background:#e8e2c7;color:#182e2b;border:2px solid #9d9a6c;font:inherit}.smallcaps{font:10px 'Press Start 2P';color:#f4d06f}
+@media(max-width:1050px){main{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.side .wide{grid-column:1/-1}}
+@media(max-width:600px){header{padding:12px}main{padding:8px}.side{display:flex}.panel{padding:9px}}
+</style></head>
+<body>
+<header><div><h1>PM2.5 KANCHANABURI</h1><div class="tag">PIXEL ENVIRONMENTAL ENGINEER ADVENTURE</div></div><div id="connection" class="muted">● กำลังเชื่อมต่อ...</div></header>
+<main>
+<section class="panel"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b>🗺️ KANCHANABURI ISOMETRIC BOARD</b><span class="muted" id="roomLabel">ยังไม่ได้เข้าห้อง</span></div>
+<div class="board-wrap"><div id="board"><div class="center"><div class="big">KANCHANABURI</div><div class="landmark">🌉 🌲 🏞️</div><b>PM2.5 ENVIRONMENTAL MISSION</b><div class="muted">ซื้อพื้นที่ • สำรวจเมือง • จัดการมลพิษ</div></div></div></div>
+<div class="muted">กระดานกว้าง 1,160 px · มุมมอง Isometric 45° · เลื่อนแนวนอนบนมือถือเพื่อดูครบทุกช่อง</div></section>
+<aside class="side">
+<section class="panel wide"><b>👷 ทีมวิศวกรสิ่งแวดล้อม</b><div id="players" class="players" style="margin-top:9px"></div></section>
+<section class="panel"><b>🎲 ตาของคุณ</b><div style="display:flex;justify-content:center;gap:12px;margin:12px"><div id="d1" style="font-size:35px">⚀</div><div id="d2" style="font-size:35px">⚀</div></div><div id="status" class="muted">สร้างห้องหรือเข้าร่วมด้วยรหัส</div><div class="grid2" style="margin-top:10px"><button class="btn" id="roll" disabled>ทอยลูกเต๋า</button><button class="alt" id="end" disabled>จบเทิร์น</button></div><button class="alt" id="assets" style="width:100%;margin-top:8px">ดูทรัพย์สิน</button></section>
+<section class="panel"><b>🌐 ห้องออนไลน์</b><div id="roomActions" style="margin-top:9px"><button class="btn" id="create">สร้างห้องใหม่</button><div style="margin:8px 0" class="muted">หรือใส่รหัสห้องเพื่อเข้าร่วม</div><input class="input" id="code" placeholder="รหัสห้อง เช่น A1B2C3"><button class="alt" id="join" style="width:100%;margin-top:8px">เข้าร่วมห้อง</button></div><div class="muted" id="share" style="margin-top:8px"></div></section>
+<section class="panel wide"><b>📜 บันทึกเกม</b><div class="log" id="log" style="margin-top:8px">ยินดีต้อนรับ! สร้างห้องหรือเข้าร่วมห้องของเพื่อน</div></section>
+<section class="panel wide muted"><b>วิธีเล่น</b><br>ผู้เล่นแต่ละคนเปิดลิงก์บนอุปกรณ์ของตนเอง ใส่ชื่อและเข้าห้องเดียวกัน · เจ้าของห้องเริ่มเกมเมื่อมีผู้เล่นอย่างน้อย 2 คน · ซื้อแหล่งท่องเที่ยวและจ่ายค่าเช่าเมื่อเดินไปตกพื้นที่ของผู้เล่นอื่น</section>
+</aside></main>
+<div class="modal" id="modal"><div class="dialog" id="dialog"></div></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);let socket=null,state=null,myId=null,room=null,rolled=false;
+const colors=['#ef5b54','#55a9ed','#65cb86','#f0cf5d'];
+const places=[
+['จุดเริ่มต้น',0],['สะพานข้ามแม่น้ำแคว',60],['กองกลาง',0],['สุสานทหารสัมพันธมิตร',60],['ค่าธรรมเนียมอุทยาน',100],['รถไฟสายมรณะ',200],['พิพิธภัณฑ์ช่องเขาขาด',100],['โอกาส',0],['น้ำตกไทรโยคน้อย',100],['น้ำตกเอราวัณ',120],['พักสถานี',0],['เขื่อนศรีนครินทร์',140],['กิจกรรมล่องแพ',150],['ถ้ำกระแซ',140],['เมืองมัลลิกา',160],['รถไฟสายมรณะ',200],['วัดถ้ำเสือ',180],['กองกลาง',0],['ต้นจามจุรียักษ์',180],['วัดเมตตาธรรมโพธิญาณ',200],['จุดชมวิว',0],['น้ำตกห้วยแม่ขมิ้น',220],['โอกาส',0],['เขื่อนวชิราลงกรณ',220],['ปิล๊อก–บ้านอีต่อง',240],['รถไฟสายมรณะ',200],['เหมืองปิล็อก',260],['ล่องแพแม่น้ำแคว',150],['สะพานมอญ',260],['เจดีย์พุทธคยา',280],['ไปสถานีพัก',0],['น้ำพุร้อนหินดาด',300],['อุทยานทองผาภูมิ',300],['กองกลาง',0],['อุทยานไทรโยค',320],['รถไฟสายมรณะ',200],['เขาช้างเผือก',350],['โอกาส',0],['อุทยานแห่งชาติเอราวัณ',400],['ภาษีท่องเที่ยว',100]];
+const pos=[];for(let i=0;i<=10;i++)pos.push([10-i,10]);for(let i=1;i<=10;i++)pos.push([0,10-i]);for(let i=1;i<=10;i++)pos.push([i,0]);for(let i=1;i<=9;i++)pos.push([10,i]);
+function log(s){$('log').innerHTML=s+'<br>'+$('log').innerHTML}
+function modal(title,body,buttons){$('dialog').innerHTML='<h2>'+title+'</h2><p>'+body+'</p><div id="modalButtons"></div>';buttons.forEach(b=>{let x=document.createElement('button');x.className=b.alt?'alt':'btn';x.textContent=b.text;x.onclick=b.fn;$('modalButtons').appendChild(x)});$('modal').style.display='flex'}
+function close(){$('modal').style.display='none'}
+function render(){
+ if(!state)return;
+ $('roomLabel').textContent='ROOM '+room+' · '+(state.started?'กำลังเล่น':'รอผู้เล่น');
+ if(room){$('share').innerHTML='ลิงก์เชิญเพื่อน: <br><a style="color:#ffe18a;word-break:break-all" href="'+location.origin+'/?room='+room+'">'+location.origin+'/?room='+room+'</a> <button class="alt" id="copyLink" style="margin-top:6px">คัดลอกลิงก์</button>';const cb=document.getElementById('copyLink');if(cb)cb.onclick=()=>navigator.clipboard?.writeText(location.origin+'/?room='+room)}
+ $('players').innerHTML=state.players.map((p,i)=>`<div class="player ${i===state.current?'active':''}"><img class="avatar" src="/assets/engineer-${['red','blue','green','yellow'][i]}.png" alt="วิศวกร ${p.name}"><div><span style="color:${p.color}">■</span> ${p.name}</div><div class="muted">วิศวกรสิ่งแวดล้อม · PPE</div><div class="money">${p.cash.toLocaleString()} ฿</div><div class="muted">${p.assets.length} พื้นที่ · ช่อง ${p.pos+1}</div></div>`).join('');
+ $('status').textContent=state.started?(state.players.find(p=>p.id===state.current)?.name||'')+' กำลังเล่น':'รอเริ่มเกม';
+ $('roll').disabled=!state.started||state.players[state.current]?.id!==myId||state.rolled||!state.players.some(p=>p.id===myId);
+ $('end').disabled=!state.started||state.players[state.current]?.id!==myId||!state.rolled;
+ $('d1').textContent=state.dice?.[0]||'⚀';$('d2').textContent=state.dice?.[1]||'⚀';
+ const board=$('board');board.querySelectorAll('.tile').forEach(n=>n.remove());
+ pos.forEach(([c,r],i)=>{
+  const x=580+(c-r)*48,y=385+(c+r-10)*24;
+  const t=document.createElement('div');t.className='tile';t.style.left=x+'px';t.style.top=y+'px';
+  const owner=state.owners[i];const current=state.players.some(p=>p.id===myId&&p.pos===i);
+  if(current)t.classList.add('current');
+  const band=document.createElement('div');band.className='stripe';band.style.background=['#a5c49a','#8db9c9','#d4a0a8','#e1c56c','#83ae88'][Math.floor(i/8)%5];t.appendChild(band);
+  const name=document.createElement('strong');name.textContent=places[i][0];t.appendChild(name);
+  const price=document.createElement('small');price.textContent=places[i][1]?places[i][1]+' เครดิต':'';t.appendChild(price);
+  if(owner!==undefined){const o=document.createElement('div');o.className='owner';o.style.color=state.players.find(p=>p.id===owner)?.color||'#333';o.textContent='เจ้าของ: '+(state.players.find(p=>p.id===owner)?.name||'');t.appendChild(o)}
+  const tokens=document.createElement('div');tokens.className='tokens';
+  state.players.filter(p=>p.pos===i).forEach(p=>{let tok=document.createElement('img');tok.className='token';tok.src='/assets/engineer-'+['red','blue','green','yellow'][state.players.indexOf(p)]+'.png';tok.alt=p.name;tok.title=p.name;tokens.appendChild(tok)});
+  t.appendChild(tokens);board.appendChild(t);
+ });
+ if(!state.started&&state.host===myId){let b=document.createElement('button');b.className='btn';b.textContent='เริ่มเกม';b.style.position='absolute';b.style.left='50%';b.style.top='50%';b.style.transform='translate(-50%,-50%)';b.onclick=()=>socket.emit('start',{room});board.appendChild(b)}
+}
+function connect(){if(typeof io==='undefined'){$('connection').textContent='● ยังไม่ได้เชื่อมต่อเซิร์ฟเวอร์';return}socket=io();socket.on('connect',()=>{$('connection').textContent='● ONLINE';myId=socket.id;const q=new URLSearchParams(location.search).get('room');if(q){$('code').value=q;joinRoom(q)}});socket.on('state',s=>{state=s;room=s.code;render()});socket.on('message',m=>log(m));socket.on('errorMessage',m=>modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close} ]));socket.on('purchaseOffer',o=>modal('📍 ซื้อสถานที่?',o.name+' ราคา '+o.price+' เครดิต',[{text:'ซื้อ',fn:()=>{socket.emit('buy',{room});close()}},{text:'ผ่าน',alt:true,fn:()=>{socket.emit('pass',{room});close()}}]));socket.on('gameOver',w=>modal('🏆 ผู้ชนะ',w.name+' เป็นผู้ชนะเกมนี้',[{text:'ปิด',fn:close}]))}
+function joinRoom(code){const name=prompt('กรุณาใส่ชื่อผู้เล่น (เช่น วิศวกรเอ)')||'Engineer';socket.emit('join',{room:code,name})}
+$('create').onclick=()=>{const name=prompt('ชื่อผู้เล่นคนแรก')||'Engineer';socket.emit('create',{name})};
+$('join').onclick=()=>{let c=$('code').value.trim().toUpperCase();if(c)joinRoom(c);else modal('กรุณาใส่รหัสห้อง','ขอรหัสห้องจากเพื่อนก่อน',[{text:'ตกลง',fn:close}])};
+$('roll').onclick=()=>socket.emit('roll',{room});$('end').onclick=()=>socket.emit('endTurn',{room});$('assets').onclick=()=>{let p=state?.players.find(p=>p.id===myId);modal('ทรัพย์สินของฉัน',p?.assets.map(i=>places[i][0]+' · '+places[i][1]+' เครดิต').join('<br>')||'ยังไม่มีทรัพย์สิน',[{text:'ปิด',fn:close}])};
+connect();
+})();
+</script></body></html>
