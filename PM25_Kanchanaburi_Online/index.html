@@ -66,6 +66,16 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .dialog h2{color:var(--gold);margin-top:0}.dialog button{margin:5px}
 @media(max-width:800px){#game{padding:8px}.playerbar{grid-template-columns:repeat(2,minmax(0,1fr))}#board{width:96vw;aspect-ratio:1.05;}.bottom-bar{grid-template-columns:1fr}.roomtag{text-align:center}.log{max-height:65px}}
 @media(max-width:480px){.topbar{height:auto;min-height:60px;padding:8px 12px}.tag{font-size:8px}.player{min-height:60px;padding:5px}.avatar{width:36px;height:45px}.pname{font-size:11px}.pmoney{font-size:12px}.pmeta{font-size:9px}.tile{padding:1px}.tile .stripe{height:4px}.tile strong{font-size:6px}.tile small{font-size:5px}.center .hint{font-size:9px}.bottom-bar{margin-top:7px}}
+
+.die.rolling{animation:diceTumble .58s cubic-bezier(.2,.8,.2,1) infinite;transform-origin:center}
+@keyframes diceTumble{0%{transform:translateY(0) rotate(0) scale(1)}25%{transform:translateY(-13px) rotate(95deg) scale(1.12)}50%{transform:translateY(0) rotate(190deg) scale(.96)}75%{transform:translateY(-7px) rotate(275deg) scale(1.08)}100%{transform:translateY(0) rotate(360deg) scale(1)}}
+.token.walking{animation:tokenWalk .18s ease-in-out infinite alternate;filter:drop-shadow(0 0 5px #ffe27b)}
+@keyframes tokenWalk{from{transform:translateY(0) scaleX(.94)}to{transform:translateY(-5px) scaleX(1.05)}}
+.tile.current{animation:tilePulse .65s ease-in-out 2}
+@keyframes tilePulse{50%{filter:brightness(1.3);box-shadow:0 0 0 3px #ffe27b}}
+.gender-choice{display:flex;align-items:center;justify-content:center;gap:8px}
+.gender-choice img{width:34px;height:48px;object-fit:contain;image-rendering:pixelated}
+@media(prefers-reduced-motion:reduce){.die.rolling,.token.walking,.tile.current{animation:none}}
 </style>
 </head>
 <body>
@@ -85,8 +95,8 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
       <input id="playerName" maxlength="20" placeholder="ชื่อผู้เล่น">
       <div style="font-weight:800;color:#ffe39a">เลือกตัวละครก่อนเข้าห้อง</div>
       <div class="gender-row">
-        <button type="button" id="maleChoice" class="gender-choice selected">👷‍♂️ วิศวกรชาย</button>
-        <button type="button" id="femaleChoice" class="gender-choice">👷‍♀️ วิศวกรหญิง</button>
+        <button type="button" id="maleChoice" class="gender-choice selected"><img src="/assets/engineer-male-red.png" alt=""> วิศวกรชาย</button>
+        <button type="button" id="femaleChoice" class="gender-choice"><img src="/assets/engineer-female-red.png" alt=""> วิศวกรหญิง</button>
       </div>
     </div>
    <div class="option-row"><button id="create" class="btn">＋ สร้างห้องใหม่</button><button id="showJoin" class="alt">เข้าร่วมห้อง</button></div>
@@ -122,15 +132,15 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 (()=>{
 const $=id=>document.getElementById(id);
 let socket=null,state=null,myId=null,room=null,audioCtx=null,musicTimer=null,musicOn=false,noteIndex=0;
-const colors=['#ef5b54','#55a9ed','#65cb86','#f0cf5d'];
-const sprite=['red','blue','green','yellow'];
-const genderFilters=['hue-rotate(330deg) saturate(1.25)','hue-rotate(155deg) saturate(1.15)','hue-rotate(75deg) saturate(1.2)','hue-rotate(35deg) saturate(1.3)'];
-let selectedGender='male',timerInterval=null;
+const colors=['#8f3f55','#55a9ed','#65cb86','#f08a32'];
+const sprite=['red','blue','green','orange'];
+
+let selectedGender='male',timerInterval=null,displayedPositions=new Map(),pendingOffer=null,offerTimer=null,moveLock=false;
 const places=[
 ['จุดเริ่มต้น',0],['สะพานข้ามแม่น้ำแคว',60],['กองกลาง',0],['สุสานทหารสัมพันธมิตร',60],['ค่าธรรมเนียมอุทยาน',100],['รถไฟสายมรณะ',200],['พิพิธภัณฑ์ช่องเขาขาด',100],['โอกาส',0],['น้ำตกไทรโยคน้อย',100],['น้ำตกเอราวัณ',120],['พักสถานี',0],['เขื่อนศรีนครินทร์',140],['กิจกรรมล่องแพ',150],['ถ้ำกระแซ',140],['เมืองมัลลิกา',160],['รถไฟสายมรณะ',200],['วัดถ้ำเสือ',180],['กองกลาง',0],['ต้นจามจุรียักษ์',180],['วัดเมตตาธรรมโพธิญาณ',200],['จุดชมวิว',0],['น้ำตกห้วยแม่ขมิ้น',220],['โอกาส',0],['เขื่อนวชิราลงกรณ',220],['ปิล๊อก–บ้านอีต่อง',240],['รถไฟสายมรณะ',200],['เหมืองปิล็อก',260],['ล่องแพแม่น้ำแคว',150],['สะพานมอญ',260],['เจดีย์พุทธคยา',280],['ไปสถานีพัก',0],['น้ำพุร้อนหินดาด',300],['อุทยานทองผาภูมิ',300],['กองกลาง',0],['อุทยานไทรโยค',320],['รถไฟสายมรณะ',200],['เขาช้างเผือก',350],['โอกาส',0],['อุทยานแห่งชาติเอราวัณ',400],['ภาษีท่องเที่ยว',100]];
 const pos=[];for(let i=0;i<=10;i++)pos.push([10-i,10]);for(let i=1;i<=10;i++)pos.push([0,10-i]);for(let i=1;i<=10;i++)pos.push([i,0]);for(let i=1;i<=9;i++)pos.push([10,i]);
 const tileColors=['#86b77b','#77b8c5','#c99a82','#d5bd68','#8eb5a0'];
-function spriteUrl(p,idx){return p.gender==='female'?'/assets/engineer-female.png':'/assets/engineer-'+sprite[idx]+'.png'}
+function spriteUrl(p,idx){return '/assets/engineer-'+(p.gender==='female'?'female':'male')+'-'+sprite[idx]+'.png'}
 function formatTime(sec){sec=Math.max(0,Math.min(1800,sec|0));return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}
 function updateTimer(){if(!state||!state.started||!state.startedAt){$('timer').textContent='00:00';return}const elapsed=Math.floor((Date.now()-state.startedAt)/1000);$('timer').textContent=formatTime(elapsed)}
 function startTimer(){if(timerInterval)clearInterval(timerInterval);updateTimer();timerInterval=setInterval(updateTimer,1000)}
@@ -139,6 +149,25 @@ function modal(title,body,buttons){$('dialog').innerHTML='<h2>'+title+'</h2><p>'
 function close(){$('modal').style.display='none'}
 function joinRoom(code){const name=$('playerName').value.trim()||'Engineer';socket.emit('join',{room:code,name,gender:selectedGender})}
 function enterGame(){ $('lobby').style.display='none';$('game').style.display='block'; }
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function animateMove(previous,next){
+ if(moveLock)return;
+ const mover=previous?.players?.[previous.current];
+ if(!previous||!next.started||!mover)return render();
+ const moved=next.players.find(p=>p.id===mover.id);
+ if(!moved||moved.pos===mover.pos)return render();
+ const oldPos=mover.pos,steps=(moved.pos-oldPos+40)%40;
+ if(!steps)return render();
+ moveLock=true;displayedPositions.set(mover.id,oldPos);
+ $('d1').classList.add('rolling');$('d2').classList.add('rolling');
+ render();
+ for(let step=1;step<=steps;step++){
+  displayedPositions.set(mover.id,(oldPos+step)%40);
+  render();await sleep(190);
+ }
+ $('d1').classList.remove('rolling');$('d2').classList.remove('rolling');
+ displayedPositions.delete(mover.id);moveLock=false;render();
+}
 function render(){
  if(!state)return;
  enterGame();
@@ -147,7 +176,7 @@ function render(){
  const currentPlayer=state.players[state.current];
  $('players').innerHTML=Array.from({length:4},(_,i)=>{
   const p=state.players[i];
-  if(!p)return `<div class="player empty" style="--player-color:${colors[i]}"><span style="font-size:25px">＋</span><div><div class="pname">รอผู้เล่น ${i+1}</div><div class="pmeta">สีประจำทีม ${['แดง','น้ำเงิน','เขียว','เหลือง'][i]}</div></div></div>`;
+  if(!p)return `<div class="player empty" style="--player-color:${colors[i]}"><span style="font-size:25px">＋</span><div><div class="pname">รอผู้เล่น ${i+1}</div><div class="pmeta">สีประจำทีม ${['แดงเลือดหมู','น้ำเงิน','เขียว','ส้ม'][i]}</div></div></div>`;
   return `<div class="player ${p.id===currentPlayer?.id?'active':''}" style="--player-color:${colors[i]}"><img class="avatar" src="${spriteUrl(p,i)}" style="filter:${p.gender==='female'?genderFilters[i]:'none'}" alt=""><div style="min-width:0"><div class="pname">${p.name}</div><div class="pmoney">${p.cash.toLocaleString()} ฿</div><div class="pmeta">${p.assets.length} พื้นที่ · ช่อง ${p.pos+1}</div></div></div>`;
  }).join('');
  $('status').textContent=state.started?(currentPlayer?.name||'')+' กำลังเล่น':'รอเริ่มเกม (อย่างน้อย 2 คน)';
@@ -159,14 +188,14 @@ function render(){
  pos.forEach(([c,r],i)=>{
   const t=document.createElement('div');t.className='tile';
   t.style.gridColumn=(c+1);t.style.gridRow=(r+1);
-  const owner=state.owners[i],onTile=state.players.some(p=>p.id===myId&&p.pos===i);
+  const owner=state.owners[i],onTile=state.players.some(p=>p.id===myId&&(displayedPositions.get(p.id)??p.pos)===i);
   if(onTile)t.classList.add('current');
   const band=document.createElement('div');band.className='stripe';band.style.background=tileColors[Math.floor(i/8)%tileColors.length];t.appendChild(band);
   const name=document.createElement('strong');name.textContent=places[i][0];t.appendChild(name);
   const price=document.createElement('small');price.textContent=places[i][1]?places[i][1]+' ฿':'';t.appendChild(price);
   if(owner!==undefined){const o=document.createElement('div');o.className='owner';o.style.color=state.players.find(p=>p.id===owner)?.color||'#333';o.textContent=state.players.find(p=>p.id===owner)?.name||'มีเจ้าของ';t.appendChild(o)}
   const tokens=document.createElement('div');tokens.className='tokens';
-  state.players.filter(p=>p.pos===i).forEach(p=>{const idx=state.players.indexOf(p);const tok=document.createElement('img');tok.className='token';tok.src=spriteUrl(p,idx);if(p.gender==='female')tok.style.filter=genderFilters[idx];tok.alt=p.name;tokens.appendChild(tok)});
+  state.players.filter(p=>(displayedPositions.get(p.id)??p.pos)===i).forEach(p=>{const idx=state.players.indexOf(p);const tok=document.createElement('img');tok.className='token'+(displayedPositions.has(p.id)?' walking':'');tok.src=spriteUrl(p,idx);tok.alt=p.name;tokens.appendChild(tok)});
   t.appendChild(tokens);board.appendChild(t);
  });
  $('startGame').style.display=!state.started&&state.host===myId&&state.players.length>=2?'inline-block':'none';
@@ -176,10 +205,19 @@ function connect(){
  socket=io();
  socket.on('connect',()=>{$('connection').textContent='● ONLINE';myId=socket.id;const q=new URLSearchParams(location.search).get('room');if(q){$('lobby').style.display='flex';$('playBtn').style.display='none';$('roomOptions').style.display='block';$('joinBox').style.display='block';$('code').value=q;joinRoom(q)}});
  socket.on('disconnect',()=>{$('connection').textContent='● OFFLINE'});
- socket.on('state',s=>{state=s;room=s.code;render()});
+ socket.on('state',s=>{const previous=state;state=s;room=s.code;if(previous&&s.started&&previous.rolled!==true&&s.rolled===true&&previous.current===s.current)animateMove(previous,s);else render()});
  socket.on('message',m=>log(m));
  socket.on('errorMessage',m=>modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close}]));
- socket.on('purchaseOffer',o=>modal('📍 ซื้อสถานที่?',o.name+' ราคา '+o.price+' เครดิต',[{text:'ซื้อ',fn:()=>{socket.emit('buy',{room});close()}},{text:'ผ่าน',alt:true,fn:()=>{socket.emit('pass',{room});close()}}]));
+ socket.on('purchaseOffer',o=>{
+ pendingOffer=o;if(offerTimer)clearTimeout(offerTimer);
+ offerTimer=setTimeout(()=>{
+  if(!pendingOffer)return;const offer=pendingOffer;
+  modal('📍 คุณตกช่อง: '+offer.name,'สถานที่นี้มีราคา '+offer.price.toLocaleString()+' เครดิต ต้องการซื้อพื้นที่นี้หรือไม่?',[
+   {text:'ซื้อพื้นที่',fn:()=>{socket.emit('buy',{room});pendingOffer=null;close()}},
+   {text:'ไม่ซื้อ',alt:true,fn:()=>{socket.emit('pass',{room});pendingOffer=null;close()}}
+  ]);
+ },3000);
+});
  socket.on('gameOver',w=>modal('🏆 ผู้ชนะ',w.name+' เป็นผู้ชนะเกมนี้',[{text:'ปิด',fn:close}]));
 }
 $('playBtn').onclick=()=>{$('playBtn').style.display='none';$('roomOptions').style.display='block';$('playerName').focus()};
@@ -189,7 +227,12 @@ $('showJoin').onclick=()=>{$('joinBox').style.display=$('joinBox').style.display
 $('create').onclick=()=>{const name=$('playerName').value.trim()||'Engineer';socket.emit('create',{name,gender:selectedGender})};
 $('join').onclick=()=>{const c=$('code').value.trim().toUpperCase();if(c)joinRoom(c);else modal('กรุณากรอกรหัสห้อง','ขอรหัสห้องจากเพื่อนก่อน',[{text:'ตกลง',fn:close}])};
 $('startGame').onclick=()=>socket.emit('start',{room});
-$('roll').onclick=()=>socket.emit('roll',{room});
+$('roll').onclick=()=>{
+ if($('roll').disabled)return;
+ $('roll').disabled=true;$('d1').classList.add('rolling');$('d2').classList.add('rolling');
+ socket.emit('roll',{room});
+ setTimeout(()=>{$('d1').classList.remove('rolling');$('d2').classList.remove('rolling')},3200);
+};
 $('end').onclick=()=>socket.emit('endTurn',{room});
 $('assets').onclick=()=>{const p=state?.players.find(p=>p.id===myId);modal('ทรัพย์สินของฉัน',p?.assets.map(i=>places[i][0]+' · '+places[i][1]+' เครดิต').join('<br>')||'ยังไม่มีทรัพย์สิน',[{text:'ปิด',fn:close}])};
 function musicStep(){
