@@ -177,7 +177,7 @@ function render(){
  $('players').innerHTML=Array.from({length:4},(_,i)=>{
   const p=state.players[i];
   if(!p)return `<div class="player empty" style="--player-color:${colors[i]}"><span style="font-size:25px">＋</span><div><div class="pname">รอผู้เล่น ${i+1}</div><div class="pmeta">สีประจำทีม ${['แดงเลือดหมู','น้ำเงิน','เขียว','ส้ม'][i]}</div></div></div>`;
-  return `<div class="player ${p.id===currentPlayer?.id?'active':''}" style="--player-color:${colors[i]}"><img class="avatar" src="${spriteUrl(p,i)}" style="filter:${p.gender==='female'?genderFilters[i]:'none'}" alt=""><div style="min-width:0"><div class="pname">${p.name}</div><div class="pmoney">${p.cash.toLocaleString()} ฿</div><div class="pmeta">${p.assets.length} พื้นที่ · ช่อง ${p.pos+1}</div></div></div>`;
+  return `<div class="player ${p.id===currentPlayer?.id?'active':''}" style="--player-color:${colors[i]}"><img class="avatar" src="${spriteUrl(p,i)}" alt=""><div style="min-width:0"><div class="pname">${p.name}</div><div class="pmoney">${p.cash.toLocaleString()} ฿</div><div class="pmeta">${p.assets.length} พื้นที่ · ช่อง ${p.pos+1}</div></div></div>`;
  }).join('');
  $('status').textContent=state.started?(currentPlayer?.name||'')+' กำลังเล่น':'รอเริ่มเกม (อย่างน้อย 2 คน)';
  $('roll').disabled=!state.started||currentPlayer?.id!==myId||state.rolled;
