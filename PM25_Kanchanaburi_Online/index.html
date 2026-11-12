@@ -281,6 +281,14 @@ socket.on('meetingEnd',()=>close());
   ]);
  },3000);
 });
+ socket.on('purchaseResult',result=>{
+  if(result.success){
+   purchaseSound();
+   log('ซื้อ '+result.name+' สำเร็จ!');
+  }else{
+   modal('ซื้อพื้นที่ไม่สำเร็จ','เงินของท่านไม่เพียงพอสำหรับซื้อ '+result.name+' กรุณากดตกลงเพื่อเปลี่ยนตาถัดไป',[{text:'ตกลง',fn:()=>{socket.emit('purchaseFailureAcknowledge',{room});close()}}]);
+  }
+ });
  socket.on('gameOver',w=>{
  const winners=(w.winners||[]).join(' และ ');
  const table=(w.standings||[]).map((p,i)=>(i+1)+'. '+p.name+' — '+p.cash.toLocaleString()+' บาท (เครดิต '+p.credits+', ทรัพย์สิน '+p.assets+' แห่ง)').join('<br>');
@@ -310,6 +318,11 @@ function playTone(freq=440,duration=.12,type='sine',volume=.08){
   gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(volume,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
   osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now);osc.stop(now+duration+.02);
  }catch(e){}
+}
+function purchaseSound(){
+ // เสียงกระดิ่ง/เหรียญสั้น ๆ เมื่อซื้อที่ดินสำเร็จ
+ [659.25,830.61,987.77].forEach((f,i)=>setTimeout(()=>playTone(f,.16,'triangle',.085),i*85));
+ setTimeout(()=>playTone(1318.51,.22,'sine',.07),280);
 }
 function diceSound(){
  [520,390,620,470,740,560].forEach((f,i)=>setTimeout(()=>playTone(f,.075,'square',.035),i*65));
