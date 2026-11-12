@@ -169,7 +169,7 @@ function modal(title,body,buttons){$('dialog').innerHTML='<h2>'+title+'</h2><p>'
 function close(){$('modal').style.display='none'}
 function showMeeting(meeting){$('modal').dataset.meetingShown='1';
  const answered=meeting.answers?.[myId];
- if(answered){modal('🗣️ ประชุมสิ่งแวดล้อม','คุณตอบแล้ว: '+(answered==='confirm'?'ยืนยัน':'ปฏิเสธ')+'<br>รอผู้เล่นคนอื่นตอบครบทุกคน เกมจะหยุดเวลาไว้ระหว่างประชุม',[{text:'รอผู้เล่น',fn:()=>{}}]);return}
+ if(answered){modal('🗣️ ประชุมสิ่งแวดล้อม','คุณตอบแล้ว: '+(answered==='confirm'?'ยืนยัน':'ปฏิเสธ')+'<br>รอผู้เล่นคนอื่นตอบครบทุกคน เวลาของเกมยังนับต่อเนื่องระหว่างประชุม',[{text:'รอผู้เล่น',fn:()=>{}}]);return}
  const p=state?.players.find(x=>x.id===myId);
  const canPay=(p?.cash||0)>=300;
  modal('🗣️ ประชุมสิ่งแวดล้อม รอบที่ '+meeting.number,
@@ -224,7 +224,12 @@ function render(){
   const t=document.createElement('div');t.className='tile';
   t.style.gridColumn=(c+1);t.style.gridRow=(r+1);
   const owner=state.owners[i],ownerPlayer=state.players.find(p=>p.id===owner),onTile=state.players.some(p=>p.id===myId&&(displayedPositions.get(p.id)??p.pos)===i);
-  if(ownerPlayer){t.style.border='4px solid '+ownerPlayer.color;t.style.boxShadow='inset 0 0 0 1px #ffffff,0 2px 0 #263f36';}if(onTile)t.classList.add('current');
+  if(ownerPlayer){
+   t.style.border='4px solid '+ownerPlayer.color;
+   t.style.boxShadow='inset 0 0 0 2px #ffffff,0 2px 0 #263f36';
+   t.style.background=`linear-gradient(145deg,${ownerPlayer.color}22,${ownerPlayer.color}44),#ffffff`;
+   t.dataset.ownerColor=ownerPlayer.color;
+  }if(onTile)t.classList.add('current');
   const band=document.createElement('div');band.className='stripe';band.style.background=tileColors[Math.floor(i/8)%tileColors.length];t.appendChild(band);
   const name=document.createElement('strong');name.textContent=places[i][0];t.appendChild(name);
   const price=document.createElement('small');price.textContent=places[i][1]?places[i][1]+' ฿':'';t.appendChild(price);
@@ -253,18 +258,22 @@ function connect(){
  socket.on('playerMoved',async m=>{
   if(!state)return;
   displayedDice=m.dice||displayedDice;
-  // แสดงลูกเต๋ากำลังหมุนระหว่างเดิน แล้วค่อยหยุดที่แต้มจริงจากเซิร์ฟเวอร์
   $('d1').classList.add('rolling');$('d2').classList.add('rolling');
   moveLock=true;displayedPositions.set(m.playerId,m.from);
-  for(let step=1;step<=m.steps;step++){
+  try{
+   for(let step=1;step<=m.steps;step++){
     displayedPositions.set(m.playerId,(m.from+step)%40);
     render();await sleep(190);
+   }
+   await sleep(250);
+   const value=v=>({'⚀':1,'⚁':2,'⚂':3,'⚃':4,'⚄':5,'⚅':6}[v]||1);
+   drawDie('d1',value(displayedDice?.[0]));drawDie('d2',value(displayedDice?.[1]));
+  }finally{
+   $('d1').classList.remove('rolling');$('d2').classList.remove('rolling');
+   displayedPositions.delete(m.playerId);moveLock=false;render();
+   // Only the player who rolled acknowledges the end of movement.
+   if(m.playerId===myId)socket.emit('movementComplete',{room});
   }
-  await sleep(250);
-  $('d1').classList.remove('rolling');$('d2').classList.remove('rolling');
-  const value=v=>({'⚀':1,'⚁':2,'⚂':3,'⚃':4,'⚄':5,'⚅':6}[v]||1);
-  drawDie('d1',value(displayedDice?.[0]));drawDie('d2',value(displayedDice?.[1]));
-  displayedPositions.delete(m.playerId);moveLock=false;render();
 });
 socket.on('meetingEnd',()=>close());
   socket.on('timerTick',t=>{if(state){state.elapsedSeconds=t.elapsedSeconds;state.pm25=t.pm25;updateTimer()}});

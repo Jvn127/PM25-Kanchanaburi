@@ -22,7 +22,16 @@ function publicState(r){return {code:r.code,host:r.host,current:r.current,starte
 function pub(r){io.to(r.code).emit('state',publicState(r))}
 function msg(r,s){io.to(r.code).emit('message',s)}
 function current(r,s){return r.players[r.current]&&r.players[r.current].id===s.id}
-function advance(r){if(!r.players.length)return;r.current=(r.current+1)%r.players.length;r.rolled=false;r.dice=null;r.pending=null;pub(r)}
+function advance(r){if(!r.players.length)return;r.current=(r.current+1)%r.players.length;r.rolled=false;r.dice=null;r.pending=null;r.moving=null;pub(r)}
+function completeMovement(r,playerId){
+ if(!r||!r.started||r.moving!==playerId)return false;
+ r.moving=null;
+ if(r.pending&&r.pending.player===playerId){
+  io.to(playerId).emit('purchaseOffer',{name:r.pending.name,price:r.pending.price,index:r.pending.index,pollution:r.pending.pollution});
+  pub(r);return true;
+ }
+ advance(r);maybeMeetingOrFinish(r);pub(r);return true;
+}
 function finishGame(r,reason){
  if(!r.started)return;r.elapsedBeforePause=GAME_SECONDS;r.started=false;r.meeting=null;
  const max=Math.max(...r.players.map(p=>p.cash)),winners=r.players.filter(p=>p.cash===max);
@@ -58,7 +67,7 @@ function land(r,p){
 io.on('connection',s=>{
  s.on('create',({name,gender})=>{
   const code=Math.random().toString(36).slice(2,8).toUpperCase(),p={id:s.id,name:String(name||'Engineer').slice(0,20),gender:gender==='female'?'female':'male',color:colors[0],cash:1000,credits:0,pos:0,assets:[],alive:true};
-  const r={code,host:s.id,players:[p],current:0,started:false,countdown:false,activeSince:null,elapsedBeforePause:0,rolled:false,dice:null,owners:{},pending:null,pm25:0,meeting:null,meetingsDone:[]};
+  const r={code,host:s.id,players:[p],current:0,started:false,countdown:false,activeSince:null,elapsedBeforePause:0,rolled:false,dice:null,moving:null,owners:{},pending:null,pm25:0,meeting:null,meetingsDone:[]};
   rooms.set(code,r);s.join(code);s.emit('message','สร้างห้องแล้ว! แชร์รหัสห้อง '+code+' ให้เพื่อน');pub(r);
  });
  s.on('join',({room,name,gender})=>{
@@ -82,17 +91,23 @@ io.on('connection',s=>{
   },3000);
  });
  s.on('roll',({room})=>{
-  const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||r.rolled||r.pending||!current(r,s))return;
+  const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||r.rolled||r.pending||r.moving||!current(r,s))return;
   maybeMeetingOrFinish(r);if(!r.started||r.meeting)return;
   const p=r.players[r.current],a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6),old=p.pos;
   r.dice=[['','⚀','⚁','⚂','⚃','⚄','⚅'][a],['','⚀','⚁','⚂','⚃','⚄','⚅'][b]];
   p.pos=(p.pos+a+b)%40;if(p.pos<old)credit(r,p,200,'ผ่านจุดเริ่มต้น');
-  r.rolled=true;land(r,p);
+  r.rolled=true;r.moving=p.id;land(r,p);
   io.to(r.code).emit('playerMoved',{playerId:p.id,from:old,to:p.pos,steps:a+b,dice:r.dice});
-  if(!r.pending)advance(r);else pub(r);
+  pub(r);
+  setTimeout(()=>completeMovement(r,p.id),10000);
+ });
+ s.on('movementComplete',({room})=>{
+  const r=rooms.get(String(room||'').toUpperCase());
+  if(!r||!current(r,s))return;
+  completeMovement(r,s.id);
  });
  s.on('buy',({room})=>{
-  const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||!r.pending||r.pending.player!==s.id||!current(r,s))return;
+  const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||!r.pending||r.moving||r.pending.player!==s.id||!current(r,s))return;
   const p=r.players.find(x=>x.id===s.id),i=r.pending.index,price=places[i][1];
   if(p.cash>=price){p.cash-=price;p.assets.push(i);r.owners[i]=p.id;r.pm25+=pollutionFor(i);msg(r,`${p.name} ซื้อ ${places[i][0]} และเพิ่ม PM2.5 ${pollutionFor(i)} หน่วย`);
    s.emit('purchaseResult',{success:true,name:places[i][0]});
@@ -109,7 +124,7 @@ io.on('connection',s=>{
   msg(r,r.players[r.current].name+' ซื้อพื้นที่ไม่สำเร็จ เนื่องจากเงินไม่เพียงพอ');
   advance(r);
  });
- s.on('pass',({room})=>{const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||!r.pending||r.pending.player!==s.id||!current(r,s))return;msg(r,r.players[r.current].name+' ผ่านการซื้อ');advance(r)});
+ s.on('pass',({room})=>{const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||!r.pending||r.moving||r.pending.player!==s.id||!current(r,s))return;msg(r,r.players[r.current].name+' ผ่านการซื้อ');advance(r)});
  s.on('meetingAnswer',({room,answer})=>{
   const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.meeting||r.meeting.answers[s.id])return;
   const p=r.players.find(x=>x.id===s.id);if(!p)return;
