@@ -64,6 +64,9 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .modal{position:fixed;inset:0;background:#061719df;display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
 .dialog{width:min(440px,100%);background:#173b3e;border:3px solid var(--gold);padding:18px;box-shadow:8px 8px #061719}
 .dialog h2{color:var(--gold);margin-top:0}.dialog button{margin:5px}
+
+#turnNotice{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:#071a1dcc;pointer-events:none}
+#turnNotice span{background:#173b3e;border:3px solid var(--gold);padding:22px 30px;color:#ffe39a;font-size:clamp(20px,4vw,34px);font-weight:800;box-shadow:8px 8px #061719}
 @media(max-width:800px){#game{padding:8px}.playerbar{grid-template-columns:repeat(2,minmax(0,1fr))}#board{width:96vw;aspect-ratio:1.05;}.bottom-bar{grid-template-columns:1fr}.roomtag{text-align:center}.log{max-height:65px}}
 @media(max-width:480px){.topbar{height:auto;min-height:60px;padding:8px 12px}.tag{font-size:8px}.player{min-height:60px;padding:5px}.avatar{width:36px;height:45px}.pname{font-size:11px}.pmoney{font-size:12px}.pmeta{font-size:9px}.tile{padding:1px}.tile .stripe{height:4px}.tile strong{font-size:6px}.tile small{font-size:5px}.center .hint{font-size:9px}.bottom-bar{margin-top:7px}}
 
@@ -107,7 +110,9 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 </section>
 
 <main id="game">
- <div class="timer" id="timer">00:00</div><div class="playerbar" id="players"></div>
+ <div class="timer" id="timer">00:00</div>
+  <div id="pm25" class="panel" style="max-width:420px;margin:0 auto 10px;text-align:center;font-weight:800;color:#b9f1d0">🌫️ PM2.5 สะสม: 0 หน่วย</div>
+  <div class="playerbar" id="players"></div>
  <div class="board-stage">
   <div id="board">
    <div class="center">
@@ -121,12 +126,13 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
  </div>
  <div class="bottom-bar">
   <div class="panel"><div class="roomtag" id="roomLabel">ROOM —</div><div class="log" id="log">ยินดีต้อนรับสู่การผจญภัยกาญจนบุรี!</div></div>
-  <div class="panel"><div class="dice"><div class="die" id="d1">⚀</div><div class="die" id="d2">⚀</div></div><div class="controls" style="margin-top:8px"><button class="btn" id="roll" disabled>🎲 ทอยลูกเต๋า</button><button class="alt" id="end" disabled>จบเทิร์น</button><button class="alt" id="assets">ทรัพย์สิน</button></div></div>
+  <div class="panel"><div class="dice"><div class="die" id="d1">⚀</div><div class="die" id="d2">⚀</div></div><div class="controls" style="margin-top:8px"><button class="btn" id="roll" disabled>🎲 ทอยลูกเต๋า</button><button class="alt" id="assets">ทรัพย์สิน</button></div></div>
   <div class="panel" style="text-align:center"><div id="status" style="font-weight:800;color:#ffe39a">รอผู้เล่นเข้าร่วมห้อง</div><div class="hint" id="share"></div></div>
  </div>
 </main>
 <button id="music" title="เปิด/ปิดเพลงประกอบ">♫ เพลง: ปิด</button>
 <div class="modal" id="modal"><div class="dialog" id="dialog"></div></div>
+<div id="turnNotice"><span id="turnNoticeText"></span></div>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 (()=>{
@@ -142,11 +148,21 @@ const pos=[];for(let i=0;i<=10;i++)pos.push([10-i,10]);for(let i=1;i<=10;i++)pos
 const tileColors=['#86b77b','#77b8c5','#c99a82','#d5bd68','#8eb5a0'];
 function spriteUrl(p,idx){return '/assets/engineer-'+(p.gender==='female'?'female':'male')+'-'+sprite[idx]+'.png'}
 function formatTime(sec){sec=Math.max(0,Math.min(1800,sec|0));return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}
-function updateTimer(){if(!state||!state.started||!state.startedAt){$('timer').textContent='00:00';return}const elapsed=Math.floor((Date.now()-state.startedAt)/1000);$('timer').textContent=formatTime(elapsed)}
+function updateTimer(){const elapsed=state?.elapsedSeconds||0;$('timer').textContent=formatTime(elapsed);$('pm25').textContent='🌫️ PM2.5 สะสม: '+(state?.pm25??0)+' หน่วย'}
 function startTimer(){if(timerInterval)clearInterval(timerInterval);updateTimer();timerInterval=setInterval(updateTimer,1000)}
 function log(s){$('log').innerHTML=s+'<br>'+$('log').innerHTML}
 function modal(title,body,buttons){$('dialog').innerHTML='<h2>'+title+'</h2><p>'+body+'</p><div id="modalButtons"></div>';buttons.forEach(b=>{let x=document.createElement('button');x.className=b.alt?'alt':'btn';x.textContent=b.text;x.onclick=b.fn;$('modalButtons').appendChild(x)});$('modal').style.display='flex'}
 function close(){$('modal').style.display='none'}
+function showMeeting(meeting){$('modal').dataset.meetingShown='1';
+ const answered=meeting.answers?.[myId];
+ if(answered){modal('🗣️ ประชุมสิ่งแวดล้อม','คุณตอบแล้ว: '+(answered==='confirm'?'ยืนยัน':'ปฏิเสธ')+'<br>รอผู้เล่นคนอื่นตอบครบทุกคน เกมจะหยุดเวลาไว้ระหว่างประชุม',[{text:'รอผู้เล่น',fn:()=>{}}]);return}
+ const p=state?.players.find(x=>x.id===myId);
+ const canPay=(p?.cash||0)>=300;
+ modal('🗣️ ประชุมสิ่งแวดล้อม รอบที่ '+meeting.number,
+ 'เลือกแนวทางจัดการ PM2.5<br><br><b>ยืนยัน:</b> จ่าย 300 บาท ได้ชื่อเสียง +10 และลด PM2.5 10 หน่วย<br><b>ปฏิเสธ:</b> ไม่เสียเงิน ชื่อเสียงและ PM2.5 คงเดิม'+(canPay?'':'<br><br><span style="color:#ffb2a8">เงินไม่ถึง 300 บาท จึงยืนยันไม่ได้</span>'),
+ [{text:'ยืนยันมาตรการ',fn:()=>{socket.emit('meetingAnswer',{room,answer:'confirm'});}},
+  {text:'ปฏิเสธ',alt:true,fn:()=>{socket.emit('meetingAnswer',{room,answer:'reject'});}}]);
+}
 function joinRoom(code){const name=$('playerName').value.trim()||'Engineer';socket.emit('join',{room:code,name,gender:selectedGender})}
 function enterGame(){ $('lobby').style.display='none';$('game').style.display='block'; }
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -171,17 +187,17 @@ async function animateMove(previous,next){
 function render(){
  if(!state)return;
  enterGame();
- if(state.started)startTimer();else{if(timerInterval)clearInterval(timerInterval);$('timer').textContent='00:00'}
+ if(state.started){if(!timerInterval)timerInterval=setInterval(updateTimer,1000);updateTimer()}else{if(timerInterval)clearInterval(timerInterval);timerInterval=null;updateTimer()}
  $('roomLabel').textContent='ROOM '+room+' · '+(state.started?'กำลังเล่น':'รอผู้เล่น');
  const currentPlayer=state.players[state.current];
  $('players').innerHTML=Array.from({length:4},(_,i)=>{
   const p=state.players[i];
   if(!p)return `<div class="player empty" style="--player-color:${colors[i]}"><span style="font-size:25px">＋</span><div><div class="pname">รอผู้เล่น ${i+1}</div><div class="pmeta">สีประจำทีม ${['แดงเลือดหมู','น้ำเงิน','เขียว','ส้ม'][i]}</div></div></div>`;
-  return `<div class="player ${p.id===currentPlayer?.id?'active':''}" style="--player-color:${colors[i]}"><img class="avatar" src="${spriteUrl(p,i)}" alt=""><div style="min-width:0"><div class="pname">${p.name}</div><div class="pmoney">${p.cash.toLocaleString()} ฿</div><div class="pmeta">${p.assets.length} พื้นที่ · ช่อง ${p.pos+1}</div></div></div>`;
+  return `<div class="player ${p.id===currentPlayer?.id?'active':''}" style="--player-color:${colors[i]}"><img class="avatar" src="${spriteUrl(p,i)}" alt=""><div style="min-width:0"><div class="pname">${p.name}</div><div class="pmoney">${p.cash.toLocaleString()} ฿</div><div class="pmeta">${p.assets.length} พื้นที่ · ชื่อเสียง ${p.reputation||0}</div></div></div>`;
  }).join('');
  $('status').textContent=state.started?(currentPlayer?.name||'')+' กำลังเล่น':'รอเริ่มเกม (อย่างน้อย 2 คน)';
- $('roll').disabled=!state.started||currentPlayer?.id!==myId||state.rolled;
- $('end').disabled=!state.started||currentPlayer?.id!==myId||!state.rolled;
+ $('roll').disabled=!state.started||!!state.meeting||currentPlayer?.id!==myId||state.rolled;
+ 
  $('d1').textContent=state.dice?.[0]||'⚀';$('d2').textContent=state.dice?.[1]||'⚀';
  const board=$('board');
  board.querySelectorAll('.tile').forEach(n=>n.remove());
@@ -205,20 +221,44 @@ function connect(){
  socket=io();
  socket.on('connect',()=>{$('connection').textContent='● ONLINE';myId=socket.id;const q=new URLSearchParams(location.search).get('room');if(q){$('lobby').style.display='flex';$('playBtn').style.display='none';$('roomOptions').style.display='block';$('joinBox').style.display='block';$('code').value=q;joinRoom(q)}});
  socket.on('disconnect',()=>{$('connection').textContent='● OFFLINE'});
- socket.on('state',s=>{const previous=state;state=s;room=s.code;if(previous&&s.started&&previous.rolled!==true&&s.rolled===true&&previous.current===s.current)animateMove(previous,s);else render()});
- socket.on('message',m=>log(m));
+ socket.on('state',s=>{
+ const previous=state;state=s;room=s.code;render();
+ if(previous&&previous.current!==s.current&&s.started&&!s.meeting){
+  const who=s.players[s.current]?.name||'ผู้เล่นถัดไป';
+  $('turnNoticeText').textContent='ตาของ '+who;$('turnNotice').style.display='flex';
+  setTimeout(()=>{$('turnNotice').style.display='none'},1500);
+ }
+ if(s.meeting&&!$('modal').dataset.meetingShown){$('modal').dataset.meetingShown='1';showMeeting(s.meeting)}
+ if(!s.meeting){$('modal').dataset.meetingShown='';}
+});
+ socket.on('playerMoved',async m=>{
+  if(!state)return;
+  moveLock=true;displayedPositions.set(m.playerId,m.from);
+  for(let step=1;step<=m.steps;step++){
+    displayedPositions.set(m.playerId,(m.from+step)%40);
+    render();await sleep(190);
+  }
+  displayedPositions.delete(m.playerId);moveLock=false;render();
+});
+  socket.on('meetingEnd',()=>close());
+  socket.on('timerTick',t=>{if(state){state.elapsedSeconds=t.elapsedSeconds;state.pm25=t.pm25;updateTimer()}});
+  socket.on('message',m=>log(m));
  socket.on('errorMessage',m=>modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close}]));
  socket.on('purchaseOffer',o=>{
  pendingOffer=o;if(offerTimer)clearTimeout(offerTimer);
  offerTimer=setTimeout(()=>{
   if(!pendingOffer)return;const offer=pendingOffer;
-  modal('📍 คุณตกช่อง: '+offer.name,'สถานที่นี้มีราคา '+offer.price.toLocaleString()+' เครดิต ต้องการซื้อพื้นที่นี้หรือไม่?',[
+  modal('📍 คุณตกช่อง: '+offer.name,'สถานที่นี้ราคา '+offer.price.toLocaleString()+' บาท และหากซื้อจะเพิ่ม PM2.5 '+(offer.pollution||0)+' หน่วย ต้องการซื้อหรือไม่?',[
    {text:'ซื้อพื้นที่',fn:()=>{socket.emit('buy',{room});pendingOffer=null;close()}},
    {text:'ไม่ซื้อ',alt:true,fn:()=>{socket.emit('pass',{room});pendingOffer=null;close()}}
   ]);
  },3000);
 });
- socket.on('gameOver',w=>modal('🏆 ผู้ชนะ',w.name+' เป็นผู้ชนะเกมนี้',[{text:'ปิด',fn:close}]));
+ socket.on('gameOver',w=>{
+ const winners=(w.winners||[]).join(' และ ');
+ const table=(w.standings||[]).map((p,i)=>(i+1)+'. '+p.name+' — '+p.cash.toLocaleString()+' บาท (ชื่อเสียง '+p.reputation+', ทรัพย์สิน '+p.assets+' แห่ง)').join('<br>');
+ modal('🏆 จบเกม — ผู้ชนะ: '+winners,'เงินคงเหลือสูงสุด '+(w.cash||0).toLocaleString()+' บาท<br><br><b>สรุปอันดับ</b><br>'+table+'<br><br><b>เกณฑ์ชนะ:</b> เงินสดคงเหลือมากที่สุดเท่านั้น',[{text:'ปิด',fn:close}]);
+});
 }
 $('playBtn').onclick=()=>{$('playBtn').style.display='none';$('roomOptions').style.display='block';$('playerName').focus()};
 $('maleChoice').onclick=()=>{selectedGender='male';$('maleChoice').classList.add('selected');$('femaleChoice').classList.remove('selected')};
@@ -233,7 +273,7 @@ $('roll').onclick=()=>{
  socket.emit('roll',{room});
  setTimeout(()=>{$('d1').classList.remove('rolling');$('d2').classList.remove('rolling')},3200);
 };
-$('end').onclick=()=>socket.emit('endTurn',{room});
+
 $('assets').onclick=()=>{const p=state?.players.find(p=>p.id===myId);modal('ทรัพย์สินของฉัน',p?.assets.map(i=>places[i][0]+' · '+places[i][1]+' เครดิต').join('<br>')||'ยังไม่มีทรัพย์สิน',[{text:'ปิด',fn:close}])};
 function musicStep(){
  if(!audioCtx)return;

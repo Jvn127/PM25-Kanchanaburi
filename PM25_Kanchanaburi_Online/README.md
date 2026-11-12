@@ -1,44 +1,60 @@
 # PM2.5 KANCHANABURI — Online Pixel Board Game
 
-## Features
-- Wide readable 40-space board with 45-degree isometric presentation.
-- Kanchanaburi attractions as properties.
-- Environmental-engineering player tokens (pixel-style hard hat, safety vest and sampling kit).
-- Online rooms for up to four players using Socket.IO.
-- Shareable room links: `https://YOUR-DOMAIN/?room=ROOMCODE`.
-- User-supplied Kanchanaburi landscape image is used as the page background.
+## กติกาและระบบเกม (ฉบับอัปเดต)
 
-## Run locally
-1. Install Node.js 18+.
-2. In this folder run `npm install`.
-3. Run `npm start`.
-4. Open `http://localhost:3000` in multiple browser windows/devices on the same network.
+- เล่นออนไลน์ได้ 2–4 คน ผ่านห้องและรหัสห้อง
+- ผู้เล่นทุกคนเริ่มต้นด้วยเงินสดคนละ **1,500 บาท** และชื่อเสียง **0 คะแนน**
+- เกมจับเวลาการเล่นจริง **30:00 นาที** เริ่มจาก 00:00
+- เมื่อทอยลูกเต๋า ผู้เล่นเดินตามผลรวมของลูกเต๋า
+- เมื่อตกช่องที่ยังไม่มีเจ้าของ ระบบส่งหน้าต่างซื้อ/ไม่ซื้อให้ผู้เล่นคนนั้นหลังเดินเสร็จประมาณ 3 วินาที
+- เมื่อซื้อหรือปฏิเสธการซื้อ ระบบจะเปลี่ยนตาให้อัตโนมัติ ไม่ต้องกดจบเทิร์น
+- ช่องที่ไม่ต้องตัดสินใจซื้อจะเปลี่ยนตาให้อัตโนมัติ
+- เมื่อซื้อพื้นที่ ค่า PM2.5 รวมของเกมจะเพิ่มตามค่ามลพิษของพื้นที่นั้น
+- ค่า PM2.5 แสดงบนหน้าจอตลอดเกม
 
-## Deploy on Render
-1. Upload this folder to a GitHub repository.
-2. Create a Render **Web Service** connected to that repository.
-3. Build command: `npm install`
-4. Start command: `npm start`
-5. After deploy, open the Render URL. Share links like `https://YOUR-RENDER-SERVICE.onrender.com/?room=ROOMCODE`.
+## การประชุมสิ่งแวดล้อม
 
-The room URL is generated from the browser's current host by the client in production; this project is a deployable source package, not a live hosted service yet.
+- เริ่มประชุมเมื่อเวลาเล่นสะสมถึง **10:00** และ **20:00**
+- ระหว่างประชุม ตัวจับเวลาเกมหยุดชั่วคราว และกลับมาเดินต่อเมื่อผู้เล่นทุกคนตอบแล้ว
+- ผู้เล่นแต่ละคนเลือกได้หนึ่งครั้งต่อรอบประชุม:
+  - **ยืนยัน:** ต้องมีเงินอย่างน้อย 300 บาท จ่าย 300 บาท ได้ชื่อเสียง +10 และลด PM2.5 ส่วนกลาง 10 หน่วย
+  - **ปฏิเสธ:** ไม่เสียเงิน ชื่อเสียงไม่เปลี่ยน และ PM2.5 ไม่เปลี่ยน
+- ค่า PM2.5 จะไม่ลดต่ำกว่า 0
 
-## Notes
-This is a playable multiplayer prototype. It currently includes room creation/joining, synchronized turns, dice, property purchase, rent and random community events. Add persistence/reconnect recovery, trade, mortgages, buildings, and stronger anti-cheat validation before production use.
+## ค่ามลพิษเริ่มต้นของพื้นที่
 
-## Player character sprites
-Four environmental-engineer character sprites are included under `assets/`:
-- `engineer-red.png`
-- `engineer-blue.png`
-- `engineer-green.png`
-- `engineer-yellow.png`
+ค่าเหล่านี้เป็นค่าตั้งต้นในโค้ดและสามารถแก้ไขได้ในฟังก์ชัน `pollutionFor()` ใน `server.js`:
+- สถานที่ท่องเที่ยว/ธรรมชาติที่ซื้อได้: +2 หน่วย
+- เขื่อน: +3 หน่วย
+- กิจกรรมล่องแพ: +1 หน่วย
+- รถไฟ/ขนส่ง: +10 หน่วย
+- เหมือง: +12 หน่วย
+- บ้าน (หากเพิ่มเป็นทรัพย์สิน): +3 หน่วย
+- โรงงาน (หากเพิ่มเป็นทรัพย์สิน): +15 หน่วย
 
-Each player appears as a pixel-art engineer wearing a white hard hat, team-color jacket, cargo trousers and work boots. The same sprites are used in the player panel and on the board. `character-design-reference.png` contains the full four-color turnaround reference.
+> หมายเหตุ: กระดานเวอร์ชันนี้ยังใช้สถานที่ท่องเที่ยวกาญจนบุรีเป็นทรัพย์สินหลัก ยังไม่มีช่องบ้านและโรงงานแยกเป็นประเภทเฉพาะ ค่าบ้าน/โรงงานจึงเป็นค่าเตรียมไว้สำหรับการเพิ่มประเภททรัพย์สินภายหลัง
 
+## เงื่อนไขแพ้–ชนะ
 
-## Latest update: movement and dice animations
-- Player tokens animate one space at a time after a dice roll.
-- Dice animate while the roll is being processed.
-- Unowned purchasable properties show a private purchase dialog to the player who landed there, after a 3-second pause.
-- The dialog shows the exact property name and price, with Buy / Don't buy actions.
-- Male and female character sprites are provided in four team colors (maroon, blue, green, orange).
+- เมื่อเวลาการเล่นสะสมครบ **30:00 นาที** เกมจะจบ
+- ผู้ที่มี **เงินสดคงเหลือมากที่สุด** เป็นผู้ชนะ
+- มูลค่าทรัพย์สินและคะแนนชื่อเสียงแสดงในสรุปผล แต่ **ไม่นำมาคำนวณผู้ชนะ**
+- หากเงินสดสูงสุดเท่ากัน ผู้เล่นที่มีเงินเท่ากันเป็นผู้ชนะร่วม
+
+## การติดตั้งและ Deploy
+
+1. ติดตั้ง Node.js 18 ขึ้นไป
+2. เปิดโฟลเดอร์นี้แล้วรัน `npm install`
+3. รัน `npm start`
+4. เปิด `http://localhost:3000`
+5. บน Render ใช้ Build Command: `npm install` และ Start Command: `npm start`
+
+## ไฟล์ภาพ
+
+- พื้นหลังจังหวัดกาญจนบุรีอยู่ที่ `background-kanchanaburi.png`
+- ภาพตัวละครชาย/หญิง 4 สีอยู่ใน `assets/`
+- ชื่อไฟล์ใน `assets/` ต้องตรงกับที่หน้าเว็บเรียกใช้
+
+## หมายเหตุการทดสอบ
+
+แพ็กเกจนี้ปรับโครงสร้างกติกาฝั่งเซิร์ฟเวอร์ให้เป็นผู้ควบคุมเงิน PM2.5 การประชุม เวลา และผลแพ้ชนะ ตรวจสอบไวยากรณ์ JavaScript และความสมบูรณ์ของ ZIP แล้ว แต่ควรทดสอบเกมหลายเบราว์เซอร์/หลายเครื่องก่อนเปิดเล่นจริง
