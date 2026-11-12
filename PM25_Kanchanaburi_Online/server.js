@@ -27,7 +27,9 @@ function completeMovement(r,playerId){
  if(!r||!r.started||r.moving!==playerId)return false;
  r.moving=null;
  if(r.pending&&r.pending.player===playerId){
-  io.to(playerId).emit('purchaseOffer',{name:r.pending.name,price:r.pending.price,index:r.pending.index,pollution:r.pending.pollution});
+  const offer={name:r.pending.name,price:r.pending.price,index:r.pending.index,pollution:r.pending.pollution,offerId:`${r.code}-${playerId}-${r.pending.index}-${Date.now()}`};
+  r.pending.offerId=offer.offerId;
+  io.to(playerId).emit('purchaseOffer',offer);
   pub(r);return true;
  }
  advance(r);maybeMeetingOrFinish(r);pub(r);return true;
@@ -61,7 +63,7 @@ function land(r,p){
  if([4,39].includes(i)){charge(r,p,price,'ค่าธรรมเนียม');return}
  if(i===30){p.pos=10;msg(r,p.name+' ถูกส่งไปพักที่สถานี');return}
  if(!price)return;
- if(r.owners[i]===undefined){r.pending={player:p.id,index:i};io.to(p.id).emit('purchaseOffer',{name,price,index:i,pollution:pollutionFor(i)});return}
+ if(r.owners[i]===undefined){r.pending={player:p.id,index:i,name,price,pollution:pollutionFor(i)};return}
  if(r.owners[i]!==p.id){const owner=r.players.find(x=>x.id===r.owners[i]);if(owner){const damage=Math.ceil(price/2);charge(r,p,damage,'ค่าเสียหาย 50% ของราคาพื้นที่ '+name);if(p.cash>0)credit(r,owner,damage,'ค่าชดเชยพื้นที่')}}
 }
 io.on('connection',s=>{

@@ -281,15 +281,29 @@ socket.on('meetingEnd',()=>close());
   socket.on('gameCountdown',c=>{if($('startGame'))$('startGame').disabled=true;if($('hostStart'))$('hostStart').disabled=true;showCountdown(c.seconds||3).finally(()=>{if($('startGame'))$('startGame').disabled=false;if($('hostStart'))$('hostStart').disabled=false})});
  socket.on('errorMessage',m=>modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close}]));
  socket.on('purchaseOffer',o=>{
- pendingOffer=o;if(offerTimer)clearTimeout(offerTimer);
- offerTimer=setTimeout(()=>{
-  if(!pendingOffer)return;const offer=pendingOffer;
-  modal('📍 คุณตกช่อง: '+offer.name,'สถานที่นี้ราคา '+offer.price.toLocaleString()+' บาท และหากซื้อจะเพิ่ม PM2.5 '+(offer.pollution||0)+' หน่วย ต้องการซื้อหรือไม่?',[
-   {text:'ซื้อพื้นที่',fn:()=>{socket.emit('buy',{room});pendingOffer=null;close()}},
-   {text:'ไม่ซื้อ',alt:true,fn:()=>{socket.emit('pass',{room});pendingOffer=null;close()}}
-  ]);
- },3000);
-});
+  // แสดงหน้าต่างซื้อทันทีหลังเดินถึงช่อง ไม่หน่วงเวลา และป้องกัน event ซ้ำ
+  if(!o||pendingOffer?.offerId===o.offerId)return;
+  pendingOffer=o;
+  if(offerTimer)clearTimeout(offerTimer);
+  const offer=o;
+  offerTimer=setTimeout(()=>{
+   if(!pendingOffer||pendingOffer.offerId!==offer.offerId)return;
+   modal('📍 คุณตกช่อง: '+offer.name,
+    'สถานที่นี้ราคา '+Number(offer.price).toLocaleString()+' บาท และหากซื้อจะเพิ่ม PM2.5 '+(offer.pollution||0)+' หน่วย ต้องการซื้อหรือไม่?',
+    [
+     {text:'ซื้อพื้นที่',fn:()=>{
+       if(!pendingOffer)return;
+       socket.emit('buy',{room});
+       pendingOffer=null;close();
+     }},
+     {text:'ไม่ซื้อ',alt:true,fn:()=>{
+       if(!pendingOffer)return;
+       socket.emit('pass',{room});
+       pendingOffer=null;close();
+     }}
+    ]);
+  },350);
+ });
  socket.on('purchaseResult',result=>{
   if(result.success){
    purchaseSound();
