@@ -45,7 +45,10 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .bottom-bar{max-width:1380px;margin:10px auto 0;display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
 .panel{background:#102b30ed;border:2px solid var(--line);padding:9px 12px;box-shadow:3px 3px #06191c}
 .dice{display:flex;justify-content:center;gap:10px}
-.die{font-size:29px;background:#f7efd8;color:#263c3d;border-radius:5px;width:44px;height:44px;display:grid;place-items:center;box-shadow:0 4px #b4a37a}
+.die{width:54px;height:54px;background:linear-gradient(145deg,#fff,#e9e6df);color:#171717;border-radius:13px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:8px;gap:2px;box-shadow:inset -3px -4px 7px #bdbab3,0 5px 0 #aaa69c,0 8px 12px #06191c88;border:1px solid #d0ccc4;transform:rotate(-5deg)}
+.die:nth-child(2){transform:rotate(5deg)}
+.die .pip{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#555,#050505 65%);align-self:center;justify-self:center;box-shadow:inset 0 1px 2px #ffffff55}
+.die.rolling{animation:diceTumble .58s cubic-bezier(.2,.8,.2,1) infinite;transform-origin:center}
 .controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .btn{background:var(--gold);color:#302719;padding:10px 16px;border:0;border-bottom:4px solid #98743b;font-weight:800}
 .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -84,7 +87,11 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 <body>
 <header class="topbar">
  <div><h1>PM2.5 KANCHANABURI</h1><div class="tag">PIXEL ENVIRONMENTAL ENGINEER ADVENTURE</div></div>
- <div id="connection" class="status">● กำลังเชื่อมต่อ...</div>
+ <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+   <div id="roomBadge" style="display:none;background:#f5d27a;color:#302719;border:2px solid #fff0bf;padding:7px 12px;font-weight:900;border-radius:8px;letter-spacing:1px">ROOM —</div>
+   <button id="hostStart" class="btn" style="display:none;padding:8px 12px">▶ เริ่มเกม</button>
+   <div id="connection" class="status">● กำลังเชื่อมต่อ...</div>
+  </div>
 </header>
 
 <section id="lobby">
@@ -126,7 +133,7 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
  </div>
  <div class="bottom-bar">
   <div class="panel"><div class="roomtag" id="roomLabel">ROOM —</div><div class="log" id="log">ยินดีต้อนรับสู่การผจญภัยกาญจนบุรี!</div></div>
-  <div class="panel"><div class="dice"><div class="die" id="d1">⚀</div><div class="die" id="d2">⚀</div></div><div class="controls" style="margin-top:8px"><button class="btn" id="roll" disabled>🎲 ทอยลูกเต๋า</button><button class="alt" id="assets">ทรัพย์สิน</button></div></div>
+  <div class="panel"><div class="dice"><div class="die" id="d1" data-value="1" aria-label="ลูกเต๋า 1"></div><div class="die" id="d2" data-value="1" aria-label="ลูกเต๋า 1"></div></div><div class="controls" style="margin-top:8px"><button class="btn" id="roll" disabled>🎲 ทอยลูกเต๋า</button><button class="alt" id="assets">ทรัพย์สิน</button></div></div>
   <div class="panel" style="text-align:center"><div id="status" style="font-weight:800;color:#ffe39a">รอผู้เล่นเข้าร่วมห้อง</div><div class="hint" id="share"></div></div>
  </div>
 </main>
@@ -141,12 +148,18 @@ let socket=null,state=null,myId=null,room=null,audioCtx=null,musicTimer=null,mus
 const colors=['#8f3f55','#55a9ed','#65cb86','#f08a32'];
 const sprite=['red','blue','green','orange'];
 
-let selectedGender='male',timerInterval=null,displayedPositions=new Map(),pendingOffer=null,offerTimer=null,moveLock=false;
+let selectedGender='male',timerInterval=null,displayedPositions=new Map(),pendingOffer=null,offerTimer=null,moveLock=false,musicStepIndex=0;
 const places=[
 ['จุดเริ่มต้น',0],['สะพานข้ามแม่น้ำแคว',60],['กองกลาง',0],['สุสานทหารสัมพันธมิตร',60],['ค่าธรรมเนียมอุทยาน',100],['รถไฟสายมรณะ',200],['พิพิธภัณฑ์ช่องเขาขาด',100],['โอกาส',0],['น้ำตกไทรโยคน้อย',100],['น้ำตกเอราวัณ',120],['พักสถานี',0],['เขื่อนศรีนครินทร์',140],['กิจกรรมล่องแพ',150],['ถ้ำกระแซ',140],['เมืองมัลลิกา',160],['รถไฟสายมรณะ',200],['วัดถ้ำเสือ',180],['กองกลาง',0],['ต้นจามจุรียักษ์',180],['วัดเมตตาธรรมโพธิญาณ',200],['จุดชมวิว',0],['น้ำตกห้วยแม่ขมิ้น',220],['โอกาส',0],['เขื่อนวชิราลงกรณ',220],['ปิล๊อก–บ้านอีต่อง',240],['รถไฟสายมรณะ',200],['เหมืองปิล็อก',260],['ล่องแพแม่น้ำแคว',150],['สะพานมอญ',260],['เจดีย์พุทธคยา',280],['ไปสถานีพัก',0],['น้ำพุร้อนหินดาด',300],['อุทยานทองผาภูมิ',300],['กองกลาง',0],['อุทยานไทรโยค',320],['รถไฟสายมรณะ',200],['เขาช้างเผือก',350],['โอกาส',0],['อุทยานแห่งชาติเอราวัณ',400],['ภาษีท่องเที่ยว',100]];
 const pos=[];for(let i=0;i<=10;i++)pos.push([10-i,10]);for(let i=1;i<=10;i++)pos.push([0,10-i]);for(let i=1;i<=10;i++)pos.push([i,0]);for(let i=1;i<=9;i++)pos.push([10,i]);
 const tileColors=['#86b77b','#77b8c5','#c99a82','#d5bd68','#8eb5a0'];
 function spriteUrl(p,idx){return '/assets/engineer-'+(p.gender==='female'?'female':'male')+'-'+sprite[idx]+'.png'}
+function drawDie(id,value){
+ const patterns={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+ const el=$(id);if(!el)return;el.dataset.value=value;
+ el.innerHTML=Array.from({length:9},(_,i)=>`<span class="${(patterns[value]||patterns[1]).includes(i)?'pip':''}"></span>`).join('');
+ el.setAttribute('aria-label','ลูกเต๋า '+value);
+}
 function formatTime(sec){sec=Math.max(0,Math.min(1800,sec|0));return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}
 function updateTimer(){const elapsed=state?.elapsedSeconds||0;$('timer').textContent=formatTime(elapsed);$('pm25').textContent='🌫️ PM2.5 สะสม: '+(state?.pm25??0)+' หน่วย'}
 function startTimer(){if(timerInterval)clearInterval(timerInterval);updateTimer();timerInterval=setInterval(updateTimer,1000)}
@@ -189,6 +202,10 @@ function render(){
  enterGame();
  if(state.started){if(!timerInterval)timerInterval=setInterval(updateTimer,1000);updateTimer()}else{if(timerInterval)clearInterval(timerInterval);timerInterval=null;updateTimer()}
  $('roomLabel').textContent='ROOM '+room+' · '+(state.started?'กำลังเล่น':'รอผู้เล่น');
+  $('roomBadge').style.display='block';$('roomBadge').textContent='ROOM CODE: '+room;
+  const canHostStart=!state.started&&state.host===myId&&state.players.length>=2;
+  $('hostStart').style.display=canHostStart?'inline-block':'none';
+  $('hostStart').disabled=!!state.countdown;
  const currentPlayer=state.players[state.current];
  $('players').innerHTML=Array.from({length:4},(_,i)=>{
   const p=state.players[i];
@@ -198,14 +215,15 @@ function render(){
  $('status').textContent=state.started?(currentPlayer?.name||'')+' กำลังเล่น':'รอเริ่มเกม (อย่างน้อย 2 คน)';
  $('roll').disabled=!state.started||!!state.meeting||currentPlayer?.id!==myId||state.rolled;
  
- $('d1').textContent=state.dice?.[0]||'⚀';$('d2').textContent=state.dice?.[1]||'⚀';
+ const faceValue=v=>({'⚀':1,'⚁':2,'⚂':3,'⚃':4,'⚄':5,'⚅':6}[v]||1);
+  drawDie('d1',faceValue(state.dice?.[0]));drawDie('d2',faceValue(state.dice?.[1]));
  const board=$('board');
  board.querySelectorAll('.tile').forEach(n=>n.remove());
  pos.forEach(([c,r],i)=>{
   const t=document.createElement('div');t.className='tile';
-  t.style.gridColumn=(c+1);t.style.gridRow=(r+1);if(ownerPlayer){t.style.border='4px solid '+ownerPlayer.color;t.style.boxShadow='inset 0 0 0 1px #ffffff,0 2px 0 #263f36';}
+  t.style.gridColumn=(c+1);t.style.gridRow=(r+1);
   const owner=state.owners[i],ownerPlayer=state.players.find(p=>p.id===owner),onTile=state.players.some(p=>p.id===myId&&(displayedPositions.get(p.id)??p.pos)===i);
-  if(onTile)t.classList.add('current');
+  if(ownerPlayer){t.style.border='4px solid '+ownerPlayer.color;t.style.boxShadow='inset 0 0 0 1px #ffffff,0 2px 0 #263f36';}if(onTile)t.classList.add('current');
   const band=document.createElement('div');band.className='stripe';band.style.background=tileColors[Math.floor(i/8)%tileColors.length];t.appendChild(band);
   const name=document.createElement('strong');name.textContent=places[i][0];t.appendChild(name);
   const price=document.createElement('small');price.textContent=places[i][1]?places[i][1]+' ฿':'';t.appendChild(price);
@@ -214,7 +232,7 @@ function render(){
   state.players.filter(p=>(displayedPositions.get(p.id)??p.pos)===i).forEach(p=>{const idx=state.players.indexOf(p);const tok=document.createElement('img');tok.className='token'+(displayedPositions.has(p.id)?' walking':'');tok.src=spriteUrl(p,idx);tok.alt=p.name;tokens.appendChild(tok)});
   t.appendChild(tokens);board.appendChild(t);
  });
- $('startGame').style.display=!state.started&&state.host===myId&&state.players.length>=2?'inline-block':'none';
+ $('startGame').style.display=canHostStart?'inline-block':'none';
 }
 function connect(){
  if(typeof io==='undefined'){$('connection').textContent='● ไม่พบการเชื่อมต่อเซิร์ฟเวอร์';return}
@@ -243,7 +261,7 @@ function connect(){
   socket.on('meetingEnd',()=>close());
   socket.on('timerTick',t=>{if(state){state.elapsedSeconds=t.elapsedSeconds;state.pm25=t.pm25;updateTimer()}});
   socket.on('message',m=>log(m));
-  socket.on('gameCountdown',c=>{$('startGame').disabled=true;showCountdown(c.seconds||3).then(()=>$('startGame').disabled=false)});
+  socket.on('gameCountdown',c=>{$('startGame').disabled=true;$('hostStart').disabled=true;showCountdown(c.seconds||3).then(()=>{$('startGame').disabled=false;$('hostStart').disabled=false})});
  socket.on('errorMessage',m=>modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close}]));
  socket.on('purchaseOffer',o=>{
  pendingOffer=o;if(offerTimer)clearTimeout(offerTimer);
@@ -267,7 +285,7 @@ $('femaleChoice').onclick=()=>{selectedGender='female';$('femaleChoice').classLi
 $('showJoin').onclick=()=>{$('joinBox').style.display=$('joinBox').style.display==='block'?'none':'block';$('code').focus()};
 $('create').onclick=()=>{const name=$('playerName').value.trim()||'Engineer';socket.emit('create',{name,gender:selectedGender})};
 $('join').onclick=()=>{const c=$('code').value.trim().toUpperCase();if(c)joinRoom(c);else modal('กรุณากรอกรหัสห้อง','ขอรหัสห้องจากเพื่อนก่อน',[{text:'ตกลง',fn:close}])};
-$('startGame').onclick=()=>socket.emit('start',{room});
+$('startGame').onclick=()=>socket.emit('start',{room});$('hostStart').onclick=()=>socket.emit('start',{room});
 $('roll').onclick=()=>{
  if($('roll').disabled)return;
  $('roll').disabled=true;$('d1').classList.add('rolling');$('d2').classList.add('rolling');
@@ -277,38 +295,59 @@ $('roll').onclick=()=>{
 
 $('assets').onclick=()=>{const p=state?.players.find(p=>p.id===myId);modal('ทรัพย์สินของฉัน',p?.assets.map(i=>places[i][0]+' · '+places[i][1]+' เครดิต').join('<br>')||'ยังไม่มีทรัพย์สิน',[{text:'ปิด',fn:close}])};
 function musicStep(){
- if(!audioCtx)return;
- const notes=[261.63,329.63,392,329.63,293.66,349.23,440,392];
- const freq=notes[noteIndex++%notes.length],now=audioCtx.currentTime;
- const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
- osc.type='sine';osc.frequency.setValueAtTime(freq,now);
- gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.045,now+.06);gain.gain.exponentialRampToValueAtTime(.0001,now+1.15);
- osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now);osc.stop(now+1.2);
-}
-function playTone(freq=440,duration=.12,type='sine',volume=.08){
- try{
-  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
-  const now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-  osc.type=type;osc.frequency.setValueAtTime(freq,now);
-  gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(volume,now+.015);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
-  osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now);osc.stop(now+duration+.02);
- }catch(e){}
-}
-function diceSound(){
- [520,390,620,470,740].forEach((f,i)=>setTimeout(()=>playTone(f,.07,'square',.035),i*75));
-}
-function countdownSound(n){
- playTone(n===1?880:n===2?660:520,.28,'triangle',.09);
-}
-async function showCountdown(seconds){
- const el=$('countdownNotice');el.style.display='flex';
- for(let n=seconds;n>=1;n--){
-  el.textContent=String(n);countdownSound(n);await sleep(1000);
+ if(!audioCtx||!musicOn)return;
+ const step=musicStepIndex++%16,now=audioCtx.currentTime;
+ const bass=[65.41,65.41,98,65.41,87.31,87.31,130.81,87.31,73.42,73.42,110,73.42,98,98,146.83,98];
+ const melody=[261.63,0,329.63,392,0,329.63,440,392,349.23,0,392,440,0,392,493.88,440];
+ const chordRoots=[130.81,174.61,146.83,196.00];
+ // Plucked bass: warm electric-bass style
+ if(step%4===0||step%4===2){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='triangle';o.frequency.setValueAtTime(bass[step],now);
+  o.frequency.exponentialRampToValueAtTime(Math.max(35,bass[step]*.72),now+.16);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.11,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+.22);
+  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.24);
  }
- el.textContent='GO!';playTone(1046,.45,'triangle',.12);await sleep(450);el.style.display='none';
+ // Bright marimba-like melody
+ if(melody[step]){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='sine';o.frequency.setValueAtTime(melody[step],now);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.065,now+.008);g.gain.exponentialRampToValueAtTime(.0001,now+.20);
+  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.22);
+ }
+ // Soft chord pad every bar
+ if(step%4===0){
+  const root=chordRoots[Math.floor(step/4)%4];
+  [root,root*1.25,root*1.5].forEach((freq,j)=>{
+   const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+   o.type='triangle';o.frequency.value=freq;
+   g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.018,now+.035);g.gain.exponentialRampToValueAtTime(.0001,now+.48);
+   o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.5);
+  });
+ }
+ // Kick drum on the downbeat, snare/clap on backbeat, hi-hat subdivisions
+ if(step%4===0){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='sine';o.frequency.setValueAtTime(115,now);o.frequency.exponentialRampToValueAtTime(42,now+.13);
+  g.gain.setValueAtTime(.16,now);g.gain.exponentialRampToValueAtTime(.0001,now+.16);
+  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.17);
+ }
+ if(step%8===4){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='triangle';o.frequency.setValueAtTime(185,now);
+  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.045,now+.004);g.gain.exponentialRampToValueAtTime(.0001,now+.09);
+  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.1);
+ }
+ if(step%2===1){
+  const buffer=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*.045),audioCtx.sampleRate),data=buffer.getChannelData(0);
+  for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
+  const src=audioCtx.createBufferSource(),g=audioCtx.createGain(),filter=audioCtx.createBiquadFilter();
+  src.buffer=buffer;filter.type='highpass';filter.frequency.value=6500;
+  g.gain.value=.025;src.connect(filter);filter.connect(g);g.connect(audioCtx.destination);src.start(now);
+ }
 }
 $('music').onclick=async()=>{
- if(!musicOn){audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();await audioCtx.resume();musicOn=true;musicStep();musicTimer=setInterval(musicStep,1350);$('music').textContent='♫ เพลง: เปิด'}
+ if(!musicOn){audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();await audioCtx.resume();musicOn=true;musicStepIndex=0;musicStep();musicTimer=setInterval(musicStep,150);$('music').textContent='♫ เพลง: เปิด · สนุก'}
  else{musicOn=false;clearInterval(musicTimer);musicTimer=null;if(audioCtx)await audioCtx.suspend();$('music').textContent='♫ เพลง: ปิด'}
 };
 connect();
