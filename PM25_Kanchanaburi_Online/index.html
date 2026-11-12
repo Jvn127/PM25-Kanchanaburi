@@ -48,7 +48,7 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .die{width:54px;height:54px;background:linear-gradient(145deg,#fff,#e9e6df);color:#171717;border-radius:13px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:8px;gap:2px;box-shadow:inset -3px -4px 7px #bdbab3,0 5px 0 #aaa69c,0 8px 12px #06191c88;border:1px solid #d0ccc4;transform:rotate(-5deg)}
 .die:nth-child(2){transform:rotate(5deg)}
 .die .pip{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#555,#050505 65%);align-self:center;justify-self:center;box-shadow:inset 0 1px 2px #ffffff55}
-.die.rolling{animation:diceTumble .58s cubic-bezier(.2,.8,.2,1) infinite;transform-origin:center}
+.die.rolling{animation:diceTumble .42s linear infinite;filter:drop-shadow(0 0 7px #ffe39a);}
 .controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .btn{background:var(--gold);color:#302719;padding:10px 16px;border:0;border-bottom:4px solid #98743b;font-weight:800}
 .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -68,12 +68,13 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .dialog{width:min(440px,100%);background:#173b3e;border:3px solid var(--gold);padding:18px;box-shadow:8px 8px #061719}
 .dialog h2{color:var(--gold);margin-top:0}.dialog button{margin:5px}
 
-#countdownNotice{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:#061719dd;color:#ffe39a;font:clamp(64px,16vw,150px) 'Press Start 2P',monospace;text-shadow:6px 6px #573e28}\n#turnNotice{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:#071a1dcc;pointer-events:none}
+#countdownNotice{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:#061719dd;color:#ffe39a;font:clamp(64px,16vw,150px) 'Press Start 2P',monospace;text-shadow:6px 6px #573e28}
+#turnNotice{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:#071a1dcc;pointer-events:none}
 #turnNotice span{background:#173b3e;border:3px solid var(--gold);padding:22px 30px;color:#ffe39a;font-size:clamp(20px,4vw,34px);font-weight:800;box-shadow:8px 8px #061719}
 @media(max-width:800px){#game{padding:8px}.playerbar{grid-template-columns:repeat(2,minmax(0,1fr))}#board{width:96vw;aspect-ratio:1.05;}.bottom-bar{grid-template-columns:1fr}.roomtag{text-align:center}.log{max-height:65px}}
 @media(max-width:480px){.topbar{height:auto;min-height:60px;padding:8px 12px}.tag{font-size:8px}.player{min-height:60px;padding:5px}.avatar{width:36px;height:45px}.pname{font-size:11px}.pmoney{font-size:12px}.pmeta{font-size:9px}.tile{padding:1px}.tile .stripe{height:4px}.tile strong{font-size:8px}.tile small{font-size:7px}.center .hint{font-size:9px}.bottom-bar{margin-top:7px}}
 
-.die.rolling{animation:diceTumble .58s cubic-bezier(.2,.8,.2,1) infinite;transform-origin:center}
+.die.rolling{animation:diceTumble .42s linear infinite;filter:drop-shadow(0 0 7px #ffe39a);}
 @keyframes diceTumble{0%{transform:translateY(0) rotate(0) scale(1)}25%{transform:translateY(-13px) rotate(95deg) scale(1.12)}50%{transform:translateY(0) rotate(190deg) scale(.96)}75%{transform:translateY(-7px) rotate(275deg) scale(1.08)}100%{transform:translateY(0) rotate(360deg) scale(1)}}
 .token.walking{animation:tokenWalk .18s ease-in-out infinite alternate;filter:drop-shadow(0 0 5px #ffe27b)}
 @keyframes tokenWalk{from{transform:translateY(0) scaleX(.94)}to{transform:translateY(-5px) scaleX(1.05)}}
@@ -148,7 +149,7 @@ let socket=null,state=null,myId=null,room=null,audioCtx=null,musicTimer=null,mus
 const colors=['#8f3f55','#55a9ed','#65cb86','#f08a32'];
 const sprite=['red','blue','green','orange'];
 
-let selectedGender='male',timerInterval=null,displayedPositions=new Map(),pendingOffer=null,offerTimer=null,moveLock=false,musicStepIndex=0;
+let selectedGender='male',timerInterval=null,displayedPositions=new Map(),pendingOffer=null,offerTimer=null,moveLock=false,musicStepIndex=0,displayedDice=null;
 const places=[
 ['จุดเริ่มต้น',0],['สะพานข้ามแม่น้ำแคว',60],['กองกลาง',0],['สุสานทหารสัมพันธมิตร',60],['ค่าธรรมเนียมอุทยาน',100],['รถไฟสายมรณะ',200],['พิพิธภัณฑ์ช่องเขาขาด',100],['โอกาส',0],['น้ำตกไทรโยคน้อย',100],['น้ำตกเอราวัณ',120],['พักสถานี',0],['เขื่อนศรีนครินทร์',140],['กิจกรรมล่องแพ',150],['ถ้ำกระแซ',140],['เมืองมัลลิกา',160],['รถไฟสายมรณะ',200],['วัดถ้ำเสือ',180],['กองกลาง',0],['ต้นจามจุรียักษ์',180],['วัดเมตตาธรรมโพธิญาณ',200],['จุดชมวิว',0],['น้ำตกห้วยแม่ขมิ้น',220],['โอกาส',0],['เขื่อนวชิราลงกรณ',220],['ปิล๊อก–บ้านอีต่อง',240],['รถไฟสายมรณะ',200],['เหมืองปิล็อก',260],['ล่องแพแม่น้ำแคว',150],['สะพานมอญ',260],['เจดีย์พุทธคยา',280],['ไปสถานีพัก',0],['น้ำพุร้อนหินดาด',300],['อุทยานทองผาภูมิ',300],['กองกลาง',0],['อุทยานไทรโยค',320],['รถไฟสายมรณะ',200],['เขาช้างเผือก',350],['โอกาส',0],['อุทยานแห่งชาติเอราวัณ',400],['ภาษีท่องเที่ยว',100]];
 const pos=[];for(let i=0;i<=10;i++)pos.push([10-i,10]);for(let i=1;i<=10;i++)pos.push([0,10-i]);for(let i=1;i<=10;i++)pos.push([i,0]);for(let i=1;i<=9;i++)pos.push([10,i]);
@@ -216,7 +217,7 @@ function render(){
  $('roll').disabled=!state.started||!!state.meeting||currentPlayer?.id!==myId||state.rolled;
  
  const faceValue=v=>({'⚀':1,'⚁':2,'⚂':3,'⚃':4,'⚄':5,'⚅':6}[v]||1);
-  drawDie('d1',faceValue(state.dice?.[0]));drawDie('d2',faceValue(state.dice?.[1]));
+  const diceToShow=state.dice||displayedDice;drawDie('d1',faceValue(diceToShow?.[0]));drawDie('d2',faceValue(diceToShow?.[1]));
  const board=$('board');
  board.querySelectorAll('.tile').forEach(n=>n.remove());
  pos.forEach(([c,r],i)=>{
@@ -251,17 +252,24 @@ function connect(){
 });
  socket.on('playerMoved',async m=>{
   if(!state)return;
+  displayedDice=m.dice||displayedDice;
+  // แสดงลูกเต๋ากำลังหมุนระหว่างเดิน แล้วค่อยหยุดที่แต้มจริงจากเซิร์ฟเวอร์
+  $('d1').classList.add('rolling');$('d2').classList.add('rolling');
   moveLock=true;displayedPositions.set(m.playerId,m.from);
   for(let step=1;step<=m.steps;step++){
     displayedPositions.set(m.playerId,(m.from+step)%40);
     render();await sleep(190);
   }
+  await sleep(250);
+  $('d1').classList.remove('rolling');$('d2').classList.remove('rolling');
+  const value=v=>({'⚀':1,'⚁':2,'⚂':3,'⚃':4,'⚄':5,'⚅':6}[v]||1);
+  drawDie('d1',value(displayedDice?.[0]));drawDie('d2',value(displayedDice?.[1]));
   displayedPositions.delete(m.playerId);moveLock=false;render();
 });
-  socket.on('meetingEnd',()=>close());
+socket.on('meetingEnd',()=>close());
   socket.on('timerTick',t=>{if(state){state.elapsedSeconds=t.elapsedSeconds;state.pm25=t.pm25;updateTimer()}});
   socket.on('message',m=>log(m));
-  socket.on('gameCountdown',c=>{$('startGame').disabled=true;$('hostStart').disabled=true;showCountdown(c.seconds||3).then(()=>{$('startGame').disabled=false;$('hostStart').disabled=false})});
+  socket.on('gameCountdown',c=>{if($('startGame'))$('startGame').disabled=true;if($('hostStart'))$('hostStart').disabled=true;showCountdown(c.seconds||3).finally(()=>{if($('startGame'))$('startGame').disabled=false;if($('hostStart'))$('hostStart').disabled=false})});
  socket.on('errorMessage',m=>modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close}]));
  socket.on('purchaseOffer',o=>{
  pendingOffer=o;if(offerTimer)clearTimeout(offerTimer);
@@ -288,12 +296,37 @@ $('join').onclick=()=>{const c=$('code').value.trim().toUpperCase();if(c)joinRoo
 $('startGame').onclick=()=>socket.emit('start',{room});$('hostStart').onclick=()=>socket.emit('start',{room});
 $('roll').onclick=()=>{
  if($('roll').disabled)return;
- $('roll').disabled=true;$('d1').classList.add('rolling');$('d2').classList.add('rolling');
+ $('roll').disabled=true;displayedDice=null;$('d1').classList.add('rolling');$('d2').classList.add('rolling');
  diceSound();socket.emit('roll',{room});
- setTimeout(()=>{$('d1').classList.remove('rolling');$('d2').classList.remove('rolling')},3200);
+ setTimeout(()=>{if(!displayedDice){$('d1').classList.remove('rolling');$('d2').classList.remove('rolling');$('roll').disabled=false}},5000);
 };
 
 $('assets').onclick=()=>{const p=state?.players.find(p=>p.id===myId);modal('ทรัพย์สินของฉัน',p?.assets.map(i=>places[i][0]+' · '+places[i][1]+' เครดิต').join('<br>')||'ยังไม่มีทรัพย์สิน',[{text:'ปิด',fn:close}])};
+function playTone(freq=440,duration=.12,type='sine',volume=.08){
+ try{
+  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+  const now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  osc.type=type;osc.frequency.setValueAtTime(freq,now);
+  gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(volume,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+  osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now);osc.stop(now+duration+.02);
+ }catch(e){}
+}
+function diceSound(){
+ [520,390,620,470,740,560].forEach((f,i)=>setTimeout(()=>playTone(f,.075,'square',.035),i*65));
+}
+function countdownSound(n){playTone(n===1?880:n===2?660:520,.28,'triangle',.09)}
+async function showCountdown(seconds=3){
+ const el=$('countdownNotice');if(!el)return;
+ el.style.display='flex';
+ for(let n=seconds;n>=1;n--){
+  el.textContent=String(n);
+  el.animate([{transform:'scale(.55)',opacity:.25},{transform:'scale(1.18)',opacity:1},{transform:'scale(1)',opacity:1}],{duration:650,easing:'cubic-bezier(.2,.8,.2,1)'});
+  countdownSound(n);await sleep(1000);
+ }
+ el.textContent='เริ่มเกม!';
+ playTone(1046,.18,'triangle',.12);setTimeout(()=>playTone(1318,.24,'triangle',.1),130);
+ await sleep(650);el.style.display='none';
+}
 function musicStep(){
  if(!audioCtx||!musicOn)return;
  const step=musicStepIndex++%16,now=audioCtx.currentTime;
