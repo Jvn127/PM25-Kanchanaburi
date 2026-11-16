@@ -18,7 +18,7 @@ function pollutionFor(i){
  return 5+((i*7+3)%8);
 }
 function elapsed(r){return r.startedAt?Math.floor((Date.now()-r.startedAt)/1000):0}
-function publicState(r){return {code:r.code,host:r.host,current:r.current,started:r.started,countdown:!!r.countdown,rolled:r.rolled,dice:r.dice,owners:r.owners,players:r.players.map(p=>({...p})),pm25:r.pm25,meeting:r.meeting?{number:r.meeting.number,threshold:r.meeting.threshold,forced:!!r.meeting.forced,answers:r.meeting.answers}:null,pendingOffer:(r.pending&&!r.moving&&r.pending.offerId)?{player:r.pending.player,name:r.pending.name,price:r.pending.price,index:r.pending.index,pollution:r.pending.pollution,cash:r.players.find(p=>p.id===r.pending.player)?.cash??0,offerId:r.pending.offerId||null}:null,elapsedSeconds:Math.min(GAME_SECONDS,elapsed(r))}}
+function publicState(r){return {code:r.code,host:r.host,current:r.current,started:r.started,countdown:!!r.countdown,rolled:r.rolled,dice:r.dice,owners:r.owners,players:r.players.map(p=>({...p})),pm25:r.pm25,meeting:r.meeting?{number:r.meeting.number,threshold:r.meeting.threshold,forced:!!r.meeting.forced,answers:r.meeting.answers}:null,pendingOffer:(r.pending&&!r.moving&&r.pending.offerId)?{player:r.pending.player,name:r.pending.name,price:r.pending.price,basePrice:r.pending.basePrice||r.pending.price,type:r.pending.type||'new',ownerName:r.pending.ownerName||null,index:r.pending.index,pollution:r.pending.pollution,cash:r.players.find(p=>p.id===r.pending.player)?.cash??0,offerId:r.pending.offerId||null}:null,elapsedSeconds:Math.min(GAME_SECONDS,elapsed(r))}}
 function pub(r){io.to(r.code).emit('state',publicState(r))}
 function msg(r,s){io.to(r.code).emit('message',s)}
 function current(r,s){return r.players[r.current]&&r.players[r.current].id===s.id}
@@ -37,7 +37,7 @@ function completeMovement(r,playerId,turnId){
  if(turnId!==undefined&&turnId!==r.turnSeq)return false;
  r.moving=null;
  if(r.pending&&r.pending.player===playerId){
-  const offer={name:r.pending.name,price:r.pending.price,index:r.pending.index,pollution:r.pending.pollution,offerId:`${r.code}-${playerId}-${r.pending.index}-${Date.now()}`};
+  const offer={name:r.pending.name,price:r.pending.price,basePrice:r.pending.basePrice||r.pending.price,type:r.pending.type||'new',ownerName:r.pending.ownerName||null,index:r.pending.index,pollution:r.pending.pollution,cash:r.players.find(p=>p.id===playerId)?.cash??0,offerId:`${r.code}-${playerId}-${r.pending.index}-${Date.now()}`};
   r.pending.offerId=offer.offerId;
   io.to(playerId).emit('purchaseOffer',offer);
   if(r.pendingTimer)clearTimeout(r.pendingTimer);
@@ -110,10 +110,8 @@ function land(r,p){
  if(r.owners[i]!==p.id){
   const owner=r.players.find(x=>x.id===r.owners[i]);
   if(owner){
-   const damage=Math.ceil(price/2);
-   const paid=Math.min(p.cash,damage);
-   if(paid>0){p.cash-=paid;owner.cash+=paid;msg(r,`${p.name} จ่ายค่าเสียหาย ${paid} บาท (50% ของราคาพื้นที่ ${name}) ให้ ${owner.name}`)}
-   else msg(r,`${p.name} ไม่มีเงินจ่ายค่าเสียหายพื้นที่ ${name}`);
+   r.pending={player:p.id,index:i,name,price:Math.ceil(price*1.3),basePrice:price,pollution:0,type:'buyout',ownerId:owner.id,ownerName:owner.name};
+   msg(r,`${p.name} มีโอกาสซื้อแย่ง ${owner.name} ในราคาเพิ่ม 30%`);
   }
  }
 }
@@ -121,7 +119,7 @@ io.on('connection',s=>{
  s.on('create',({name,pawn})=>{
   if(!PAWNS.includes(pawn))return s.emit('errorMessage','กรุณาเลือกตัวหมากก่อนสร้างห้อง');
   const code=Math.random().toString(36).slice(2,8).toUpperCase();
-  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:1000,credits:0,pos:0,assets:[],alive:true};
+  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:2500,credits:0,pos:0,assets:[],alive:true};
   const r={code,host:s.id,players:[p],current:0,started:false,countdown:false,startedAt:null,rolled:false,dice:null,moving:null,turnSeq:0,pendingTimer:null,owners:{},pending:null,pm25:0,meeting:null,meetingsDone:[],meetingCount:0,nextMeetingThreshold:50};
   rooms.set(code,r);s.join(code);s.emit('message','สร้างห้องแล้ว! แชร์รหัสห้อง '+code+' ให้เพื่อน');pub(r);
  });
@@ -138,7 +136,7 @@ io.on('connection',s=>{
   if(!PAWNS.includes(pawn))return s.emit('errorMessage','กรุณาเลือกตัวหมาก');
   if(r.players.some(p=>p.id===s.id))return;
   if(r.players.some(p=>p.pawn===pawn))return s.emit('pawnUnavailable',{takenPawns:r.players.map(p=>p.pawn),message:'ตัวหมากนี้มีผู้เล่นเลือกแล้ว กรุณาเลือกตัวอื่น'});
-  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:1000,credits:0,pos:0,assets:[],alive:true};
+  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:2500,credits:0,pos:0,assets:[],alive:true};
   r.players.push(p);s.join(r.code);msg(r,p.name+' เข้าร่วมห้อง');pub(r);
  });
  s.on('start',({room})=>{
@@ -150,7 +148,7 @@ io.on('connection',s=>{
   setTimeout(()=>{
    if(!rooms.has(r.code)||!r.countdown)return;
    r.countdown=false;r.started=true;r.startedAt=Date.now();r.current=0;r.rolled=false;r.dice=null;
-   msg(r,'เริ่มเกมแล้ว! เวลาเล่น 20 นาที เริ่มต้นคนละ 1,000 บาท');pub(r);
+   msg(r,'เริ่มเกมแล้ว! เวลาเล่น 20 นาที เริ่มต้นคนละ 2,500 บาท');pub(r);
   },3000);
  });
  s.on('roll',({room})=>{
@@ -174,15 +172,25 @@ io.on('connection',s=>{
  });
  s.on('buy',({room})=>{
   const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||!r.pending||r.moving||r.pending.player!==s.id||!current(r,s))return;
-  const p=r.players.find(x=>x.id===s.id),i=r.pending.index,price=places[i][1];
-  if(p.cash>=price){p.cash-=price;p.assets.push(i);r.owners[i]=p.id;r.pm25+=pollutionFor(i);msg(r,`${p.name} ซื้อ ${places[i][0]} และเพิ่ม PM2.5 ${pollutionFor(i)} หน่วย`);
-   s.emit('purchaseResult',{success:true,name:places[i][0]});
-   advance(r);return;
-  }else{
+  const p=r.players.find(x=>x.id===s.id),pending=r.pending,i=pending.index,price=pending.price;
+  if(p.cash<price){
    r.pending.awaitingFailureAck=true;
    s.emit('purchaseResult',{success:false,name:places[i][0],message:'เงินของท่านไม่เพียงพอ'});
    return;
   }
+  p.cash-=price;
+  if(pending.type==='buyout'){
+   const previousOwner=r.players.find(x=>x.id===pending.ownerId);
+   if(previousOwner){previousOwner.cash+=price;previousOwner.assets=previousOwner.assets.filter(x=>x!==i);}
+   r.owners[i]=p.id;if(!p.assets.includes(i))p.assets.push(i);
+   msg(r,`${p.name} ซื้อแย่ง ${places[i][0]} จาก ${pending.ownerName} ในราคา ${price.toLocaleString()} บาท (เพิ่ม 30% จากราคาเดิม)`);
+   s.emit('purchaseResult',{success:true,name:places[i][0],buyout:true,price});
+  }else{
+   p.assets.push(i);r.owners[i]=p.id;r.pm25+=pollutionFor(i);
+   msg(r,`${p.name} ซื้อ ${places[i][0]} และเพิ่ม PM2.5 ${pollutionFor(i)} หน่วย`);
+   s.emit('purchaseResult',{success:true,name:places[i][0],price});
+  }
+  advance(r);
  });
  s.on('purchaseFailureAcknowledge',({room})=>{
   const r=rooms.get(String(room||'').toUpperCase());
@@ -190,7 +198,18 @@ io.on('connection',s=>{
   msg(r,r.players[r.current].name+' ซื้อพื้นที่ไม่สำเร็จ เนื่องจากเงินไม่เพียงพอ');
   advance(r);
  });
- s.on('pass',({room})=>{const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||!r.pending||r.moving||r.pending.player!==s.id||!current(r,s))return;msg(r,r.players[r.current].name+' ผ่านการซื้อ');advance(r)});
+ s.on('pass',({room})=>{
+  const r=rooms.get(String(room||'').toUpperCase());
+  if(!r||!r.started||r.meeting||!r.pending||r.moving||r.pending.player!==s.id||!current(r,s))return;
+  const pending=r.pending,p=r.players[r.current];
+  if(pending.type==='buyout'){
+   const owner=r.players.find(x=>x.id===pending.ownerId);
+   const damage=Math.ceil(pending.basePrice/2),paid=Math.min(p.cash,damage);
+   p.cash-=paid;if(owner)owner.cash+=paid;
+   msg(r,`${p.name} ไม่ซื้อแย่งพื้นที่ จ่ายค่าเสียหาย ${paid} บาทให้ ${owner?.name||'เจ้าของเดิม'}`);
+  }else msg(r,p.name+' ผ่านการซื้อ');
+  advance(r);
+ });
  s.on('meetingAnswer',({room,answer})=>{
   const r=rooms.get(String(room||'').toUpperCase());
   if(!r||!r.meeting||r.meeting.answers[s.id])return;
@@ -220,6 +239,7 @@ io.on('connection',s=>{
    }
    r.meetingsDone.push(meeting.number);
    r.meeting=null;
+   r.rolled=false;r.dice=null;r.pending=null;r.moving=null;
    // หากไม่มีใครยืนยันในการประชุม 50 ให้มีรอบบังคับยืนยันที่ 60
    if(oldThreshold===50&&confirmations===0){
     r.nextMeetingThreshold=60;
@@ -233,6 +253,7 @@ io.on('connection',s=>{
    if(elapsed(r)>=GAME_SECONDS){finishGame(r,'หมดเวลา 20 นาที');return}
    io.to(r.code).emit('meetingEnd',{number:meeting.number,confirmations,reduction,pm25:r.pm25});
    msg(r,'ผู้เล่นตอบครบแล้ว กลับเข้าสู่เกม');
+   r.rolled=false;r.dice=null;r.pending=null;r.moving=null;
    maybeMeetingOrFinish(r);pub(r);
   }
  });
