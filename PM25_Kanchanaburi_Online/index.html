@@ -254,18 +254,27 @@ function showMeeting(meeting){$('modal').dataset.meetingShown='1';
  const answered=meeting.answers?.[myId];
  const p=state?.players.find(x=>x.id===myId);
  const canPay=(p?.cash||0)>=300;
+ const forced=!!meeting.forced;
  const art='<img class="meeting-art" src="assets/meeting-room-pm25.png" alt="ห้องประชุมติดตามค่า PM2.5">';
  if(answered){
   modal('🗣️ ประชุมติดตามค่า PM2.5 รอบที่ '+meeting.number,
-   art+'<div class="meeting-alert">PM2.5 ถึงเกณฑ์แล้ว กำลังจัดการประชุม</div><div class="meeting-copy">คุณตอบแล้ว: '+(answered==='confirm'?'ยืนยัน':'ปฏิเสธ')+'<br>รอผู้เล่นคนอื่นตอบครบทุกคน เวลาของเกมยังนับต่อเนื่องระหว่างประชุม</div>',
+   art+'<div class="meeting-alert">PM2.5 ถึง '+meeting.threshold+' หน่วยแล้ว</div><div class="meeting-copy">คุณตอบแล้ว: '+(answered==='confirm'?'ยืนยัน':answered==='unable'?'เงินไม่เพียงพอ':'ปฏิเสธ')+'<br>รอผู้เล่นคนอื่นตอบครบทุกคน</div>',
    [{text:'รอผู้เล่น',fn:()=>{}}]);
  }else{
-  modal('⚠️ PM2.5 ถึงเกณฑ์แล้ว',
-   art+'<div class="meeting-alert">PM2.5 ถึง '+(meeting.threshold||50)+' หน่วยแล้ว!<br>จะจัดการประชุมเพื่อพิจารณามาตรการ</div><div class="meeting-copy">เลือกแนวทางจัดการ PM2.5<br><br><b>ยืนยัน:</b> จ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วย<br><b>ปฏิเสธ:</b> ไม่เสียเงิน เครดิตและ PM2.5 คงเดิม'+(canPay?'':'<br><br><span style="color:#ffb2a8">เงินไม่ถึง 300 บาท จึงยืนยันไม่ได้</span>')+'</div>',
-   [
-    ...(canPay?[{text:'ยืนยันมาตรการ',fn:()=>{socket.emit('meetingAnswer',{room,answer:'confirm'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกยืนยันมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}]:[]),
-    {text:'ปฏิเสธ',alt:true,fn:()=>{socket.emit('meetingAnswer',{room,answer:'reject'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกปฏิเสธมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}
-   ]);
+  const explanation=forced
+   ? '<b>รอบบังคับยืนยัน:</b> ต้องกดยืนยันมาตรการ ผู้ที่มีเงินไม่ถึง 300 บาทจะไม่สามารถร่วมจ่ายได้'
+   : '<b>ยืนยัน:</b> จ่าย 300 บาท ได้เครดิต +10<br><b>ปฏิเสธ:</b> ไม่เสียเงินและไม่ได้เครดิตเพิ่ม<br>หากไม่มีใครยืนยัน ค่า PM2.5 จะคงเดิม และจะประชุมบังคับอีกครั้งเมื่อถึง 60';
+  const buttons=forced
+   ? (canPay
+      ? [{text:'ยืนยันมาตรการ (บังคับ)',fn:()=>{socket.emit('meetingAnswer',{room,answer:'confirm'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณยืนยันมาตรการแล้ว รอผู้เล่นคนอื่น</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}]
+      : [{text:'เงินไม่ถึง 300 บาท',alt:true,fn:()=>{socket.emit('meetingAnswer',{room,answer:'unable'});modal('บันทึกคำตอบแล้ว',art+'<div class="meeting-copy">คุณมีเงินไม่เพียงพอสำหรับมาตรการ ระบบบันทึกสถานะแล้ว</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}])
+   : [
+      ...(canPay?[{text:'ยืนยันมาตรการ',fn:()=>{socket.emit('meetingAnswer',{room,answer:'confirm'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกยืนยันมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}]:[]),
+      {text:'ปฏิเสธ',alt:true,fn:()=>{socket.emit('meetingAnswer',{room,answer:'reject'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกปฏิเสธมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}
+   ];
+  modal(forced?'🚨 ประชุมบังคับยืนยันมาตรการ':'⚠️ PM2.5 ถึงเกณฑ์แล้ว',
+   art+'<div class="meeting-alert">PM2.5 ถึง '+meeting.threshold+' หน่วยแล้ว</div><div class="meeting-copy">'+explanation+'<br><br>ผู้ที่ยืนยันจะจ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 5 หน่วยต่อคนที่ยืนยัน</div>',
+   buttons);
  }
  $('dialog').classList.add('meeting-dialog');
 }
@@ -459,9 +468,11 @@ function showRules(){
  ทั้งสองช่องสุ่มเหตุการณ์ด้านการเงินเหมือนกัน: รับเงิน +100, +150 หรือ +200 บาท หรือจ่ายเงิน 50 หรือ 100 บาท
  ช่องเหล่านี้ไม่เพิ่มเครดิตและไม่เปลี่ยนค่า PM2.5
  <h3>🌫️ การประชุม PM2.5</h3>
- เมื่อ PM2.5 ถึงเกณฑ์ 50, 100, 200 หรือ 300 จะมีการประชุม ผู้เล่นเลือกยืนยันหรือปฏิเสธ
- ยืนยัน: จ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วย
- ปฏิเสธ: ไม่เสียเงินและไม่ได้เครดิตเพิ่ม หากเงินไม่ถึง 300 บาท จะยืนยันไม่ได้
+ เมื่อ PM2.5 ถึง 50 หน่วย จะเริ่มประชุม ผู้เล่นเลือกยืนยันหรือปฏิเสธ
+ ยืนยัน: จ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 5 หน่วยต่อผู้เล่นที่ยืนยัน
+ หากไม่มีใครยืนยัน ค่า PM2.5 จะคงเดิม และจะเรียกประชุมอีกครั้งเมื่อถึง 60 หน่วย โดยรอบ 60 เป็นการประชุมบังคับยืนยัน
+ เมื่อมีผู้ยืนยันแล้ว ค่า PM2.5 จะลดตามจำนวนคนที่ยืนยัน และรอให้ค่า PM2.5 เพิ่มกลับถึง 50 เพื่อเริ่มประชุมรอบใหม่
+ หากเงินไม่ถึง 300 บาท จะยืนยันไม่ได้
  <h3>🏆 เงื่อนไขการชนะ</h3>
  ผู้เล่นที่มีเครดิตครบ 50 คะแนนชนะทันที
  หากไม่มีใครถึง 50 คะแนนเมื่อครบ 20 นาที ให้ผู้ที่มีเงินสดมากที่สุดชนะ หากเงินเท่ากันให้ดูเครดิต หากทั้งเงินและเครดิตเท่ากันจะชนะร่วมกัน
