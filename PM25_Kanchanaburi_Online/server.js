@@ -20,7 +20,7 @@ function pollutionFor(i){
  return places[i]?.[1]>0?2:0;
 }
 function elapsed(r){return r.startedAt?Math.floor((Date.now()-r.startedAt)/1000):0}
-function publicState(r){return {code:r.code,host:r.host,current:r.current,started:r.started,rolled:r.rolled,dice:r.dice,owners:r.owners,players:r.players.map(p=>({...p})),pm25:r.pm25,meeting:r.meeting?{number:r.meeting.number,answers:r.meeting.answers}:null,elapsedSeconds:Math.min(GAME_SECONDS,elapsed(r))}}
+function publicState(r){return {code:r.code,host:r.host,current:r.current,started:r.started,countdown:!!r.countdown,rolled:r.rolled,dice:r.dice,owners:r.owners,players:r.players.map(p=>({...p})),pm25:r.pm25,meeting:r.meeting?{number:r.meeting.number,answers:r.meeting.answers}:null,elapsedSeconds:Math.min(GAME_SECONDS,elapsed(r))}}
 function pub(r){io.to(r.code).emit('state',publicState(r))}
 function msg(r,s){io.to(r.code).emit('message',s)}
 function current(r,s){return r.players[r.current]&&r.players[r.current].id===s.id}

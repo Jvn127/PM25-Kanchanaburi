@@ -57,6 +57,11 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .roomtag{font-size:11px;color:#ffe49a;text-align:right}.timer{font:clamp(18px,2vw,27px) 'Press Start 2P',monospace;color:#ffe39a;text-align:center;margin:4px 0 8px;text-shadow:2px 2px #533}.pawn-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
 .pawn-choice{min-width:0;background:#24484a;color:#f7f1d9;border:2px solid #789d8d;border-radius:8px;padding:7px 4px;font-weight:800;display:flex;flex-direction:column;align-items:center;gap:5px}
 .pawn-choice img{width:100%;height:78px;object-fit:contain;image-rendering:pixelated}
+.pawn-choice.image-fallback:before{display:block;font-size:48px;line-height:78px}
+.pawn-choice[data-pawn="helmet"].image-fallback:before{content:'⛑️'}
+.pawn-choice[data-pawn="flask"].image-fallback:before{content:'🧪'}
+.pawn-choice[data-pawn="recycle"].image-fallback:before{content:'♻️'}
+.pawn-choice[data-pawn="pm25"].image-fallback:before{content:'🌫️'}
 .pawn-choice.selected{border:3px solid #ffe27b;background:#496b55;box-shadow:0 0 0 2px #9d7a39}
 .pawn-choice.taken{opacity:.3;filter:grayscale(1);cursor:not-allowed;text-decoration:line-through}
 .pawn-choice small{font-size:10px;color:#ffe7a6}
@@ -94,7 +99,7 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
  <div><h1>PM2.5 KANCHANABURI</h1><div class="tag">PIXEL ENVIRONMENTAL ENGINEER ADVENTURE</div></div>
  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
    <div id="roomBadge" style="display:none;background:#f5d27a;color:#302719;border:2px solid #fff0bf;padding:7px 12px;font-weight:900;border-radius:8px;letter-spacing:1px">ROOM —</div>
-   <button id="hostStart" class="btn" style="display:none;padding:8px 12px">▶ เริ่มเกม</button>
+   <button id="hostStart" class="btn" title="เจ้าของห้องเริ่มเกม" style="display:none;padding:8px 14px;min-width:116px">▶ เริ่มเกม</button>
    <div id="connection" class="status">● กำลังเชื่อมต่อ...</div>
   </div>
 </header>
@@ -110,10 +115,10 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
       <input id="playerName" maxlength="20" placeholder="ชื่อผู้เล่น">
       <div style="font-weight:800;color:#ffe39a">เลือกตัวหมากประจำตัว (ห้ามเลือกซ้ำ)</div>
       <div id="pawnGrid" class="pawn-grid">
-        <button type="button" class="pawn-choice" data-pawn="helmet"><img src="/assets/pawn-helmet.png" alt="หมวกวิศวกร"><span>หมวกวิศวกร</span></button>
-        <button type="button" class="pawn-choice" data-pawn="flask"><img src="/assets/pawn-flask.png" alt="ขวดเก็บตัวอย่าง"><span>ขวดตัวอย่าง</span></button>
-        <button type="button" class="pawn-choice" data-pawn="recycle"><img src="/assets/pawn-recycle.png" alt="รีไซเคิล"><span>รีไซเคิล</span></button>
-        <button type="button" class="pawn-choice" data-pawn="pm25"><img src="/assets/pawn-pm25.png" alt="PM2.5"><span>PM2.5</span></button>
+        <button type="button" class="pawn-choice" data-pawn="helmet"><img src="assets/pawn-helmet.png" alt="หมวกวิศวกร"><span>หมวกวิศวกร</span></button>
+        <button type="button" class="pawn-choice" data-pawn="flask"><img src="assets/pawn-flask.png" alt="ขวดเก็บตัวอย่าง"><span>ขวดตัวอย่าง</span></button>
+        <button type="button" class="pawn-choice" data-pawn="recycle"><img src="assets/pawn-recycle.png" alt="รีไซเคิล"><span>รีไซเคิล</span></button>
+        <button type="button" class="pawn-choice" data-pawn="pm25"><img src="assets/pawn-pm25.png" alt="PM2.5"><span>PM2.5</span></button>
       </div>
       <div id="pawnHint" class="hint">เลือกตัวหมาก 1 แบบก่อนสร้างหรือเข้าร่วมห้อง</div>
     </div>
@@ -154,10 +159,10 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 const $=id=>document.getElementById(id);
 let socket=null,state=null,myId=null,room=null,audioCtx=null,musicTimer=null,musicOn=false,noteIndex=0;
 const pawnInfo={
- helmet:{name:'หมวกวิศวกร',color:'#8f3f55',image:'/assets/pawn-helmet.png'},
- flask:{name:'ขวดตัวอย่าง',color:'#55a9ed',image:'/assets/pawn-flask.png'},
- recycle:{name:'รีไซเคิล',color:'#65cb86',image:'/assets/pawn-recycle.png'},
- pm25:{name:'PM2.5',color:'#f08a32',image:'/assets/pawn-pm25.png'}
+ helmet:{name:'หมวกวิศวกร',color:'#8f3f55',image:'assets/pawn-helmet.png'},
+ flask:{name:'ขวดตัวอย่าง',color:'#55a9ed',image:'assets/pawn-flask.png'},
+ recycle:{name:'รีไซเคิล',color:'#65cb86',image:'assets/pawn-recycle.png'},
+ pm25:{name:'PM2.5',color:'#f08a32',image:'assets/pawn-pm25.png'}
 };
 const colors=['#8f3f55','#55a9ed','#65cb86','#f08a32'];
 
@@ -232,11 +237,12 @@ function render(){
   const canHostStart=!state.started&&state.host===myId&&state.players.length>=2;
   $('hostStart').style.display=canHostStart?'inline-block':'none';
   $('hostStart').disabled=!!state.countdown;
- const currentPlayer=state.players[state.current];
+ const players=Array.isArray(state.players)?state.players:[];
+ const currentPlayer=players[state.current];
  $('players').innerHTML=Array.from({length:4},(_,i)=>{
-  const p=state.players[i];
-  if(!p)return `<div class="player empty" style="--player-color:${p.color||colors[i]}"><span style="font-size:25px">＋</span><div><div class="pname">รอผู้เล่น ${i+1}</div><div class="pmeta">สีประจำทีม ${['แดงเลือดหมู','น้ำเงิน','เขียว','ส้ม'][i]}</div></div></div>`;
-  return `<div class="player ${p.id===currentPlayer?.id?'active':''}" style="--player-color:${p.color||colors[i]}"><img class="avatar" src="${spriteUrl(p)}" alt=""><div style="min-width:0"><div class="pname">${p.name} · ${pawnInfo[p.pawn]?.name||"ตัวหมาก"}</div><div class="pmoney">${p.cash.toLocaleString()} ฿</div><div class="pmeta">${p.assets.length} พื้นที่ · เครดิต ${p.credits||0}</div></div></div>`;
+  const p=players[i];
+  if(!p)return `<div class="player empty" style="--player-color:${colors[i]}"><span style="font-size:25px">＋</span><div><div class="pname">รอผู้เล่น ${i+1}</div><div class="pmeta">สีประจำทีม ${['แดงเลือดหมู','น้ำเงิน','เขียว','ส้ม'][i]}</div></div></div>`;
+  return `<div class="player ${p.id===currentPlayer?.id?'active':''}" style="--player-color:${p.color||colors[i]}"><img class="avatar" src="${spriteUrl(p)}" alt=""><div style="min-width:0"><div class="pname">${p.name} · ${pawnInfo[p.pawn]?.name||"ตัวหมาก"}</div><div class="pmoney">${Number(p.cash||0).toLocaleString()} ฿</div><div class="pmeta">${(p.assets||[]).length} พื้นที่ · เครดิต ${p.credits||0}</div></div></div>`;
  }).join('');
  $('status').textContent=state.started?(currentPlayer?.name||'')+' กำลังเล่น':'รอเริ่มเกม (อย่างน้อย 2 คน)';
  $('roll').disabled=!state.started||!!state.meeting||currentPlayer?.id!==myId||state.rolled;
@@ -248,7 +254,7 @@ function render(){
  pos.forEach(([c,r],i)=>{
   const t=document.createElement('div');t.className='tile';
   t.style.gridColumn=(c+1);t.style.gridRow=(r+1);
-  const owner=state.owners[i],ownerPlayer=state.players.find(p=>p.id===owner),onTile=state.players.some(p=>p.id===myId&&(displayedPositions.get(p.id)??p.pos)===i);
+  const owner=state.owners[i],ownerPlayer=players.find(p=>p.id===owner),onTile=players.some(p=>p.id===myId&&(displayedPositions.get(p.id)??p.pos)===i);
   if(ownerPlayer){
    t.style.border='4px solid '+ownerPlayer.color;
    t.style.boxShadow='inset 0 0 0 2px #ffffff,0 2px 0 #263f36';
@@ -258,14 +264,15 @@ function render(){
   const band=document.createElement('div');band.className='stripe';band.style.background=tileColors[Math.floor(i/8)%tileColors.length];t.appendChild(band);
   const name=document.createElement('strong');name.textContent=places[i][0];t.appendChild(name);
   const price=document.createElement('small');price.textContent=places[i][1]?places[i][1]+' ฿':'';t.appendChild(price);
-  if(owner!==undefined){const o=document.createElement('div');o.className='owner';o.style.color=state.players.find(p=>p.id===owner)?.color||'#333';o.textContent=state.players.find(p=>p.id===owner)?.name||'มีเจ้าของ';t.appendChild(o)}
+  if(owner!==undefined){const o=document.createElement('div');o.className='owner';o.style.color=players.find(p=>p.id===owner)?.color||'#333';o.textContent=players.find(p=>p.id===owner)?.name||'มีเจ้าของ';t.appendChild(o)}
   const tokens=document.createElement('div');tokens.className='tokens';
-  state.players.filter(p=>(displayedPositions.get(p.id)??p.pos)===i).forEach(p=>{const idx=state.players.indexOf(p);const tok=document.createElement('img');tok.className='token'+(displayedPositions.has(p.id)?' walking':'');tok.src=spriteUrl(p);tok.alt=p.name;tokens.appendChild(tok)});
+  players.filter(p=>(displayedPositions.get(p.id)??p.pos)===i).forEach(p=>{const idx=players.indexOf(p);const tok=document.createElement('img');tok.className='token'+(displayedPositions.has(p.id)?' walking':'');tok.src=spriteUrl(p);tok.alt=p.name;tokens.appendChild(tok)});
   t.appendChild(tokens);board.appendChild(t);
  });
  $('startGame').style.display=canHostStart?'inline-block':'none';
 }
 renderPawnChoices([]);
+drawDie('d1',1);drawDie('d2',1);
 function connect(){
  if(typeof io==='undefined'){$('connection').textContent='● ไม่พบการเชื่อมต่อเซิร์ฟเวอร์';return}
  socket=io();
