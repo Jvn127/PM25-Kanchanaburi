@@ -24,7 +24,13 @@ function publicState(r){return {code:r.code,host:r.host,current:r.current,starte
 function pub(r){io.to(r.code).emit('state',publicState(r))}
 function msg(r,s){io.to(r.code).emit('message',s)}
 function current(r,s){return r.players[r.current]&&r.players[r.current].id===s.id}
-function advance(r){if(!r.players.length)return;r.current=(r.current+1)%r.players.length;r.rolled=false;r.dice=null;r.pending=null;r.moving=null;pub(r)}
+function advance(r){
+ if(!r.players.length)return;
+ r.current=(r.current+1)%r.players.length;
+ r.rolled=false;r.dice=null;r.pending=null;r.moving=null;
+ // เงินคงเหลือเป็นศูนย์ไม่ทำให้ผู้เล่นหมดสิทธิ์ทอยลูกเต๋า
+ pub(r);
+}
 function completeMovement(r,playerId){
  if(!r||!r.started||r.moving!==playerId)return false;
  r.moving=null;
@@ -60,7 +66,7 @@ function maybeMeetingOrFinish(r){
 }
 function land(r,p){
  const i=p.pos,[name,price]=places[i];msg(r,`${p.name} มาถึง ${name}`);
- if(i===0){credit(r,p,200,'ผ่านจุดเริ่มต้น');return}
+ if(i===0){return}
  if([2,17,33,7,22,37].includes(i)){const n=[100,-50,150,-100,200][Math.floor(Math.random()*5)];n>0?credit(r,p,n,'กิจกรรมชุมชน'):charge(r,p,-n,'กิจกรรมชุมชน');return}
  if([4,39].includes(i)){charge(r,p,price,'ค่าธรรมเนียม');return}
  if(i===30){p.pos=10;msg(r,p.name+' ถูกส่งไปพักที่สถานี');return}
@@ -116,12 +122,15 @@ io.on('connection',s=>{
   const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||r.rolled||r.pending||r.moving||!current(r,s))return;
   maybeMeetingOrFinish(r);if(!r.started||r.meeting)return;
   const p=r.players[r.current],a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6),old=p.pos;
+  const steps=a+b;
   r.dice=[['','⚀','⚁','⚂','⚃','⚄','⚅'][a],['','⚀','⚁','⚂','⚃','⚄','⚅'][b]];
-  p.pos=(p.pos+a+b)%40;if(p.pos<old)credit(r,p,200,'ผ่านจุดเริ่มต้น');
+  const crossedStart=(old+steps)>=40;
+  p.pos=(old+steps)%40;
+  if(crossedStart)credit(r,p,300,'ผ่านจุดเริ่มต้น');
   r.rolled=true;r.moving=p.id;land(r,p);
   io.to(r.code).emit('playerMoved',{playerId:p.id,from:old,to:p.pos,steps:a+b,dice:r.dice});
   pub(r);
-  setTimeout(()=>completeMovement(r,p.id),10000);
+  setTimeout(()=>completeMovement(r,p.id),15000);
  });
  s.on('movementComplete',({room})=>{
   const r=rooms.get(String(room||'').toUpperCase());

@@ -163,10 +163,10 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 const $=id=>document.getElementById(id);
 let socket=null,state=null,myId=null,room=null,audioCtx=null,musicTimer=null,musicOn=false,noteIndex=0;
 const pawnInfo={
- helmet:{name:'หมวกวิศวกร',color:'#8f3f55',image:'assets/pawn-helmet.png'},
- flask:{name:'ขวดตัวอย่าง',color:'#55a9ed',image:'assets/pawn-flask.png'},
- recycle:{name:'รีไซเคิล',color:'#65cb86',image:'assets/pawn-recycle.png'},
- pm25:{name:'PM2.5',color:'#f08a32',image:'assets/pawn-pm25.png'}
+ helmet:{name:'1',color:'#8f3f55',image:'assets/pawn-helmet.png'},
+ flask:{name:'2',color:'#55a9ed',image:'assets/pawn-flask.png'},
+ recycle:{name:'3',color:'#65cb86',image:'assets/pawn-recycle.png'},
+ pm25:{name:'4',color:'#f08a32',image:'assets/pawn-pm25.png'}
 };
 const colors=['#8f3f55','#55a9ed','#65cb86','#f08a32'];
 
@@ -213,8 +213,10 @@ function showMeeting(meeting){$('modal').dataset.meetingShown='1';
  }else{
   modal('⚠️ PM2.5 ถึงเกณฑ์แล้ว',
    art+'<div class="meeting-alert">PM2.5 ถึง '+(meeting.threshold||50)+' หน่วยแล้ว!<br>จะจัดการประชุมเพื่อพิจารณามาตรการ</div><div class="meeting-copy">เลือกแนวทางจัดการ PM2.5<br><br><b>ยืนยัน:</b> จ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วย<br><b>ปฏิเสธ:</b> ไม่เสียเงิน เครดิตและ PM2.5 คงเดิม'+(canPay?'':'<br><br><span style="color:#ffb2a8">เงินไม่ถึง 300 บาท จึงยืนยันไม่ได้</span>')+'</div>',
-   [{text:'ยืนยันมาตรการ',fn:()=>{socket.emit('meetingAnswer',{room,answer:'confirm'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกยืนยันมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}},
-    {text:'ปฏิเสธ',alt:true,fn:()=>{socket.emit('meetingAnswer',{room,answer:'reject'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกปฏิเสธมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}]);
+   [
+    ...(canPay?[{text:'ยืนยันมาตรการ',fn:()=>{socket.emit('meetingAnswer',{room,answer:'confirm'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกยืนยันมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}]:[]),
+    {text:'ปฏิเสธ',alt:true,fn:()=>{socket.emit('meetingAnswer',{room,answer:'reject'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกปฏิเสธมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}
+   ]);
  }
  $('dialog').classList.add('meeting-dialog');
 }
@@ -290,7 +292,10 @@ function connect(){
  socket.on('connect',()=>{$('connection').textContent='● ONLINE';myId=socket.id;const q=new URLSearchParams(location.search).get('room');if(q){$('lobby').style.display='flex';$('playBtn').style.display='none';$('roomOptions').style.display='block';$('joinBox').style.display='block';$('code').value=q;joinRoom(q)}});
  socket.on('disconnect',()=>{$('connection').textContent='● OFFLINE'});
  socket.on('state',s=>{
- const previous=state;state=s;room=s.code;render();
+ const previous=state;
+ const meetingJustStarted=!!s.meeting&&!(previous&&previous.meeting);
+ state=s;room=s.code;render();
+ if(meetingJustStarted)meetingSound();
  if(previous&&previous.current!==s.current&&s.started&&!s.meeting){
   const who=s.players[s.current]?.name||'ผู้เล่นถัดไป';
   $('turnNoticeText').textContent='ตาของ '+who;$('turnNotice').style.display='flex';
@@ -327,8 +332,11 @@ function connect(){
   }finally{
    $('d1').classList.remove('rolling');$('d2').classList.remove('rolling');
    displayedPositions.delete(m.playerId);moveLock=false;render();
-   // Only the player who rolled acknowledges the end of movement.
-   if(m.playerId===myId)socket.emit('movementComplete',{room});
+   // เว้นจังหวะชัดเจน 3 วินาทีหลังเดินถึงช่อง ก่อนเปิดหน้าต่างซื้อ/เปลี่ยนตา
+   if(m.playerId===myId){
+    await sleep(3000);
+    socket.emit('movementComplete',{room});
+   }
   }
 });
 socket.on('meetingEnd',()=>close());
@@ -368,7 +376,7 @@ socket.on('meetingEnd',()=>close());
     }}
    ];
    modal('📍 คุณตกช่อง: '+offer.name,body,buttons);
-  },350);
+  },0);
  });
  socket.on('purchaseResult',result=>{
   if(result.success){
@@ -417,6 +425,14 @@ function playTone(freq=440,duration=.12,type='sine',volume=.08){
   gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(volume,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
   osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now);osc.stop(now+duration+.02);
  }catch(e){}
+}
+function meetingSound(){
+ // เสียงเตือนประชุม: ระฆังเตือนสามจังหวะ
+ try{
+  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+ }catch(e){}
+ [784,659,784,988].forEach((f,i)=>setTimeout(()=>playTone(f,.22,'sine',.11),i*180));
 }
 function purchaseSound(){
  // เสียงเหรียญและกระดิ่งเมื่อซื้อพื้นที่สำเร็จ
