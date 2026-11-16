@@ -95,6 +95,26 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .winner-table th{background:#94631d;color:#fff2c7}
 .winner-table tr.is-winner{background:#6b4b18dd;color:#fff1a9;font-weight:900}
 .rules-copy{text-align:left;line-height:1.7}
+.dialog.rules-dialog{
+ width:min(620px,92vw);
+ max-height:min(78vh,680px);
+ overflow:hidden;
+ display:flex;
+ flex-direction:column;
+ padding:clamp(12px,2.5vw,20px);
+ border-radius:12px;
+}
+.rules-dialog h2{font-size:clamp(16px,2.3vw,22px);margin:0 38px 10px 0;line-height:1.3}
+.rules-dialog .modal-body{overflow-y:auto;overscroll-behavior:contain;padding:0 8px 8px 0;min-height:0}
+.rules-dialog .rules-copy{font-size:clamp(12px,1.6vw,14px);line-height:1.55}
+.rules-dialog .rules-copy h3{font-size:clamp(13px,1.8vw,16px);margin:10px 0 3px}
+.rules-dialog #modalButtons{padding-top:8px;border-top:1px solid #6f8b7d;text-align:right}
+.rules-close-x{
+ position:absolute;right:12px;top:10px;width:34px;height:34px;
+ border:1px solid #f5d27a;border-radius:8px;background:#254b4b;color:#fff;
+ font-size:22px;line-height:1;cursor:pointer
+}
+
 .rules-copy h3{color:#ffe39a;margin:12px 0 4px}
 
 
@@ -216,13 +236,20 @@ function updateTimer(){const elapsed=state?.elapsedSeconds||0;$('timer').textCon
 function startTimer(){if(timerInterval)clearInterval(timerInterval);updateTimer();timerInterval=setInterval(updateTimer,1000)}
 function log(s){$('log').innerHTML=s+'<br>'+$('log').innerHTML}
 function modal(title,body,buttons){
- const dialog=$('dialog');dialog.classList.toggle('winner-dialog',String(title).includes('จบเกม'));
+ const dialog=$('dialog');
+ const isRules=String(title).includes('กติกาเกม');
+ dialog.classList.toggle('winner-dialog',String(title).includes('จบเกม'));
  dialog.classList.toggle('meeting-dialog',String(title).includes('ประชุม'));
- dialog.innerHTML='<h2>'+title+'</h2><div class="modal-body">'+body+'</div><div id="modalButtons"></div>';
+ dialog.classList.toggle('rules-dialog',isRules);
+ dialog.innerHTML='<h2>'+title+'</h2><div class="modal-body">'+body+'</div><div id="modalButtons"></div>'+
+  (isRules?'<button type="button" class="rules-close-x" aria-label="ปิดกติกา" title="ปิดกติกา" onclick="close()">×</button>':'');
  buttons.forEach(b=>{let x=document.createElement('button');x.className=b.alt?'alt':'btn';x.textContent=b.text;x.onclick=b.fn;$('modalButtons').appendChild(x)});
  $('modal').style.display='flex';
 }
-function close(){$('modal').style.display='none'}
+function close(){
+ $('modal').style.display='none';
+ $('dialog').classList.remove('rules-dialog');
+}
 function showMeeting(meeting){$('modal').dataset.meetingShown='1';
  const answered=meeting.answers?.[myId];
  const p=state?.players.find(x=>x.id===myId);
@@ -439,7 +466,7 @@ function showRules(){
  ผู้เล่นที่มีเครดิตครบ 50 คะแนนชนะทันที
  หากไม่มีใครถึง 50 คะแนนเมื่อครบ 20 นาที ให้ผู้ที่มีเงินสดมากที่สุดชนะ หากเงินเท่ากันให้ดูเครดิต หากทั้งเงินและเครดิตเท่ากันจะชนะร่วมกัน
  </div>`;
- modal('📖 กติกาเกม PM2.5 KANCHANABURI',body,[{text:'เข้าใจแล้ว',fn:close}]);
+ modal('📖 กติกาเกม PM2.5 KANCHANABURI',body,[{text:'ปิดกติกา',fn:close}]);
 }
 $('rulesBtn').onclick=showRules;
 $('playBtn').onclick=()=>{$('playBtn').style.display='none';$('roomOptions').style.display='block';$('playerName').focus()};
