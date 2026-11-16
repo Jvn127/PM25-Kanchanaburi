@@ -82,6 +82,21 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .meeting-alert{font-size:clamp(18px,3vw,26px);font-weight:900;color:#ffe39a;text-align:center;margin:8px 0}
 .meeting-copy{text-align:center;line-height:1.65}
 .dialog h2{color:var(--gold);margin-top:0}.dialog button{margin:5px}
+.dialog.winner-dialog{
+ width:min(900px,96vw);max-height:94vh;overflow:auto;
+ background:linear-gradient(#062f30d9,#063b35e8),url('assets/winner-background.png') center/cover;
+ border:4px solid #f5c24d;box-shadow:0 0 0 5px #6b4518,0 16px 45px #000b;
+ text-align:center;
+}
+.winner-crown{font-size:clamp(34px,7vw,64px);line-height:1.1;margin:0 0 6px}
+.winner-title{font-size:clamp(22px,4vw,38px);color:#ffe08a;text-shadow:3px 3px #613b0b;margin:4px 0 12px}
+.winner-table{width:100%;border-collapse:collapse;background:#062c2ddd;color:#fff;margin:12px 0;font-size:clamp(12px,2vw,16px)}
+.tile-pm{display:block;color:#287b58;font-weight:900;font-size:10px;margin-top:2px}.winner-table th,.winner-table td{border:1px solid #e9c56a;padding:9px 7px;text-align:center}
+.winner-table th{background:#94631d;color:#fff2c7}
+.winner-table tr.is-winner{background:#6b4b18dd;color:#fff1a9;font-weight:900}
+.rules-copy{text-align:left;line-height:1.7}
+.rules-copy h3{color:#ffe39a;margin:12px 0 4px}
+
 
 #countdownNotice{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:#061719dd;color:#ffe39a;font:clamp(64px,16vw,150px) 'Press Start 2P',monospace;text-shadow:6px 6px #573e28}
 #turnNotice{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:#071a1dcc;pointer-events:none}
@@ -125,6 +140,7 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
         <button type="button" class="pawn-choice" data-pawn="pm25"><img src="assets/pawn-pm25.png" alt="PM2.5"><span>PM2.5</span></button>
       </div>
       <div id="pawnHint" class="hint">เลือกตัวหมาก 1 แบบก่อนสร้างหรือเข้าร่วมห้อง</div>
+      <button type="button" id="rulesBtn" class="alt" style="width:100%;margin-top:10px">📖 อ่านกติกาและวิธีชนะ</button>
     </div>
    <div class="option-row"><button id="create" class="btn">＋ สร้างห้องใหม่</button><button id="showJoin" class="alt">เข้าร่วมห้อง</button></div>
    <div id="joinBox" style="display:none"><input id="code" placeholder="กรอกรหัสห้อง เช่น A1B2C3"><button id="join" class="btn" style="width:100%">เข้าร่วมเกม</button></div>
@@ -195,11 +211,17 @@ function drawDie(id,value){
  el.innerHTML=Array.from({length:9},(_,i)=>`<span class="${(patterns[value]||patterns[1]).includes(i)?'pip':''}"></span>`).join('');
  el.setAttribute('aria-label','ลูกเต๋า '+value);
 }
-function formatTime(sec){sec=Math.max(0,Math.min(1800,sec|0));return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}
+function formatTime(sec){sec=Math.max(0,Math.min(1200,sec|0));return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}
 function updateTimer(){const elapsed=state?.elapsedSeconds||0;$('timer').textContent=formatTime(elapsed);$('pm25').textContent='🌫️ PM2.5 สะสม: '+(state?.pm25??0)+' หน่วย'}
 function startTimer(){if(timerInterval)clearInterval(timerInterval);updateTimer();timerInterval=setInterval(updateTimer,1000)}
 function log(s){$('log').innerHTML=s+'<br>'+$('log').innerHTML}
-function modal(title,body,buttons){$('dialog').innerHTML='<h2>'+title+'</h2><p>'+body+'</p><div id="modalButtons"></div>';buttons.forEach(b=>{let x=document.createElement('button');x.className=b.alt?'alt':'btn';x.textContent=b.text;x.onclick=b.fn;$('modalButtons').appendChild(x)});$('modal').style.display='flex'}
+function modal(title,body,buttons){
+ const dialog=$('dialog');dialog.classList.toggle('winner-dialog',String(title).includes('จบเกม'));
+ dialog.classList.toggle('meeting-dialog',String(title).includes('ประชุม'));
+ dialog.innerHTML='<h2>'+title+'</h2><div class="modal-body">'+body+'</div><div id="modalButtons"></div>';
+ buttons.forEach(b=>{let x=document.createElement('button');x.className=b.alt?'alt':'btn';x.textContent=b.text;x.onclick=b.fn;$('modalButtons').appendChild(x)});
+ $('modal').style.display='flex';
+}
 function close(){$('modal').style.display='none'}
 function showMeeting(meeting){$('modal').dataset.meetingShown='1';
  const answered=meeting.answers?.[myId];
@@ -277,6 +299,9 @@ function render(){
   const band=document.createElement('div');band.className='stripe';band.style.background=tileColors[Math.floor(i/8)%tileColors.length];t.appendChild(band);
   const name=document.createElement('strong');name.textContent=places[i][0];t.appendChild(name);
   const price=document.createElement('small');price.textContent=places[i][1]?places[i][1]+' ฿':'';t.appendChild(price);
+  if(places[i][1]>0&&![4,39].includes(i)){
+   const pm=document.createElement('small');pm.className='tile-pm';pm.textContent='PM +'+(i===26?15:5+((i*7+3)%8));t.appendChild(pm);
+  }
   if(owner!==undefined){const o=document.createElement('div');o.className='owner';o.style.color=players.find(p=>p.id===owner)?.color||'#333';o.textContent=players.find(p=>p.id===owner)?.name||'มีเจ้าของ';t.appendChild(o)}
   const tokens=document.createElement('div');tokens.className='tokens';
   players.filter(p=>(displayedPositions.get(p.id)??p.pos)===i).forEach(p=>{const idx=players.indexOf(p);const tok=document.createElement('img');tok.className='token'+(displayedPositions.has(p.id)?' walking':'');tok.src=spriteUrl(p);tok.alt=p.name;tokens.appendChild(tok)});
@@ -344,40 +369,32 @@ socket.on('meetingEnd',()=>close());
   socket.on('message',m=>log(m));
   socket.on('gameCountdown',c=>{if($('startGame'))$('startGame').disabled=true;if($('hostStart'))$('hostStart').disabled=true;showCountdown(c.seconds||3).finally(()=>{if($('startGame'))$('startGame').disabled=false;if($('hostStart'))$('hostStart').disabled=false})});
  socket.on('errorMessage',m=>{$('join').disabled=false;modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close}])});
- socket.on('purchaseOffer',o=>{
-  // แสดงข้อเสนอเมื่อเดินถึงที่ดินที่ยังไม่มีเจ้าของ
-  if(!o||pendingOffer?.offerId===o.offerId)return;
-  pendingOffer=o;
-  if(offerTimer)clearTimeout(offerTimer);
-  const offer=o;
-  offerTimer=setTimeout(()=>{
-   if(!pendingOffer||pendingOffer.offerId!==offer.offerId)return;
-   const me=state?.players?.find(p=>p.id===myId);
-   const cash=Number(me?.cash||0);
-   const affordable=cash>=Number(offer.price);
-   const body='สถานที่: <b>'+offer.name+'</b><br>ราคา: <b>'+Number(offer.price).toLocaleString()+' บาท</b><br>เงินของคุณ: <b>'+cash.toLocaleString()+' บาท</b><br>หากซื้อจะเพิ่ม PM2.5 '+(offer.pollution||0)+' หน่วย'+
-    (affordable?'':'<br><br><span style="color:#ffb2a8;font-weight:800">เงินของท่านไม่เพียงพอ จึงไม่สามารถซื้อพื้นที่นี้ได้</span>');
-   const buttons=affordable?[
-    {text:'ซื้อพื้นที่',fn:()=>{
-      if(!pendingOffer)return;
-      socket.emit('buy',{room});
-      pendingOffer=null;close();
-    }},
-    {text:'ไม่ซื้อ',alt:true,fn:()=>{
-      if(!pendingOffer)return;
-      socket.emit('pass',{room});
-      pendingOffer=null;close();
-    }}
-   ]:[
-    {text:'ตกลง / เปลี่ยนตา',alt:true,fn:()=>{
-      if(!pendingOffer)return;
-      socket.emit('pass',{room});
-      pendingOffer=null;close();
-    }}
-   ];
-   modal('📍 คุณตกช่อง: '+offer.name,body,buttons);
-  },0);
- });
+ function showPurchaseOffer(o){
+ if(!o)return;
+ const offerId=o.offerId||('recovered-'+o.index+'-'+o.price);
+ if(pendingOffer?.offerId===offerId)return;
+ pendingOffer={...o,offerId};
+ if(offerTimer)clearTimeout(offerTimer);
+ offerTimer=setTimeout(()=>{
+  if(!pendingOffer||pendingOffer.offerId!==offerId)return;
+  const me=state?.players?.find(p=>p.id===myId);
+  const cash=Number(o.cash??me?.cash??0);
+  const affordable=cash>=Number(o.price);
+  const body='สถานที่: <b>'+o.name+'</b><br>ราคา: <b>'+Number(o.price).toLocaleString()+' บาท</b><br>เงินของคุณ: <b>'+cash.toLocaleString()+' บาท</b><br>หากซื้อจะเพิ่ม PM2.5 '+(o.pollution||0)+' หน่วย'+
+   (affordable?'':'<br><br><span style="color:#ffb2a8;font-weight:800">เงินของท่านไม่เพียงพอ จึงไม่สามารถซื้อพื้นที่นี้ได้</span>');
+  const buttons=affordable?[
+   {text:'ซื้อพื้นที่',fn:()=>{if(!pendingOffer)return;socket.emit('buy',{room});pendingOffer=null;close();}},
+   {text:'ไม่ซื้อ',alt:true,fn:()=>{if(!pendingOffer)return;socket.emit('pass',{room});pendingOffer=null;close();}}
+  ]:[{text:'ตกลง / เปลี่ยนตา',alt:true,fn:()=>{if(!pendingOffer)return;socket.emit('pass',{room});pendingOffer=null;close();}}];
+  modal('📍 คุณตกช่อง: '+o.name,body,buttons);
+ },0);
+}
+socket.on('purchaseOffer',showPurchaseOffer);
+socket.on('state',s=>{
+ if(s.pendingOffer&&s.pendingOffer.player===myId){
+  showPurchaseOffer({...s.pendingOffer,offerId:s.pendingOffer.offerId||('recovered-'+s.code+'-'+s.pendingOffer.index+'-'+s.current)});
+ }
+});
  socket.on('purchaseResult',result=>{
   if(result.success){
    purchaseSound();
@@ -387,17 +404,44 @@ socket.on('meetingEnd',()=>close());
   }
  });
  socket.on('gameOver',w=>{
+ victorySound();
  const winners=(w.winners||[]).join(' และ ');
- const table=(w.standings||[]).map((p,i)=>(i+1)+'. '+p.name+' — '+Number(p.cash||0).toLocaleString()+' บาท (เครดิต '+(p.credits||0)+', ทรัพย์สิน '+(p.assets||0)+' แห่ง)').join('<br>');
- const rule=w.winnerRule||'เงินคงเหลือมากที่สุด และใช้เครดิตตัดสินเมื่อเงินเท่ากัน';
- const detail=w.instant
-  ? '<b>ชนะทันที!</b> เครดิตครบ 40 คะแนน'
-  : 'เงินสด '+Number(w.cash||0).toLocaleString()+' บาท · เครดิต '+(w.credits||0);
- modal('🏆 จบเกม — ผู้ชนะ: '+winners,
-  '<b>สาเหตุ:</b> '+(w.reason||'จบเกม')+'<br>'+detail+'<br><br><b>สรุปอันดับ</b><br>'+table+'<br><br><b>เกณฑ์ตัดสิน:</b> '+rule,
+ const winnerSet=new Set(w.winners||[]);
+ const rows=(w.standings||[]).map((p,i)=>`<tr class="${winnerSet.has(p.name)?'is-winner':''}">
+  <td>${i+1}</td><td>${p.name}${winnerSet.has(p.name)?' 👑':''}</td>
+  <td>${Number(p.cash||0).toLocaleString()} ฿</td><td>${Number(p.credits||0)}</td><td>${Number(p.assets||0)}</td></tr>`).join('');
+ const table='<table class="winner-table"><thead><tr><th>อันดับ</th><th>ชื่อผู้เล่น</th><th>เงินคงเหลือ</th><th>เครดิต</th><th>พื้นที่</th></tr></thead><tbody>'+rows+'</tbody></table>';
+ const rule=w.winnerRule||'เงินคงเหลือมากที่สุด หากเงินเท่ากันใช้เครดิตตัดสิน';
+ const detail=w.instant?'<b>ชนะทันที! เครดิตครบ 50 คะแนน</b>':'หมดเวลา 20 นาที — ตัดสินจากเงินสดก่อน แล้วใช้เครดิตเมื่อเงินเท่ากัน';
+ modal('🏆 จบเกม',`<div class="winner-crown">👑🏆👑</div><div class="winner-title">ผู้ชนะ: ${winners}</div>
+  <div><b>${w.reason||'จบเกม'}</b><br>${detail}</div>${table}<div><b>เกณฑ์ตัดสิน:</b> ${rule}</div>`,
   [{text:'ปิด',fn:close}]);
 });
 }
+function showRules(){
+ const body=`<div class="rules-copy">
+ <h3>🎯 เป้าหมายของเกม</h3>
+ เดินสำรวจพื้นที่ในกาญจนบุรี ซื้อพื้นที่ เก็บเงิน และสะสมเครดิตให้ถึง 50 คะแนนเพื่อชนะทันที
+ <h3>🎲 การเดินและจุดเริ่มต้น</h3>
+ ทอยลูกเต๋า 2 ลูกเพื่อเดินตามแต้ม หากเดินผ่านจุดเริ่มต้น รับเงิน 300 บาท
+ <h3>🏞️ ช่องพื้นที่</h3>
+ เมื่อตกพื้นที่ที่ยังไม่มีเจ้าของ จะมีหน้าต่างถามว่าจะซื้อหรือไม่ซื้อ ซื้อได้เมื่อมีเงินเพียงพอเท่านั้น
+ หากตกพื้นที่ของผู้เล่นอื่น จะจ่ายค่าเสียหาย 50% ของราคาพื้นที่ให้เจ้าของ
+ เมื่อซื้อพื้นที่ จะเพิ่มค่า PM2.5 ตามพื้นที่นั้น โดยทั่วไป 5–12 หน่วย และช่องเหมืองปิล็อกเพิ่ม 15 หน่วย
+ <h3>🎁 ช่องโอกาส และ 🏦 ช่องกองกลาง</h3>
+ ทั้งสองช่องสุ่มเหตุการณ์ด้านการเงินเหมือนกัน: รับเงิน +100, +150 หรือ +200 บาท หรือจ่ายเงิน 50 หรือ 100 บาท
+ ช่องเหล่านี้ไม่เพิ่มเครดิตและไม่เปลี่ยนค่า PM2.5
+ <h3>🌫️ การประชุม PM2.5</h3>
+ เมื่อ PM2.5 ถึงเกณฑ์ 50, 100, 200 หรือ 300 จะมีการประชุม ผู้เล่นเลือกยืนยันหรือปฏิเสธ
+ ยืนยัน: จ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วย
+ ปฏิเสธ: ไม่เสียเงินและไม่ได้เครดิตเพิ่ม หากเงินไม่ถึง 300 บาท จะยืนยันไม่ได้
+ <h3>🏆 เงื่อนไขการชนะ</h3>
+ ผู้เล่นที่มีเครดิตครบ 50 คะแนนชนะทันที
+ หากไม่มีใครถึง 50 คะแนนเมื่อครบ 20 นาที ให้ผู้ที่มีเงินสดมากที่สุดชนะ หากเงินเท่ากันให้ดูเครดิต หากทั้งเงินและเครดิตเท่ากันจะชนะร่วมกัน
+ </div>`;
+ modal('📖 กติกาเกม PM2.5 KANCHANABURI',body,[{text:'เข้าใจแล้ว',fn:close}]);
+}
+$('rulesBtn').onclick=showRules;
 $('playBtn').onclick=()=>{$('playBtn').style.display='none';$('roomOptions').style.display='block';$('playerName').focus()};
 document.querySelectorAll('.pawn-choice').forEach(btn=>btn.onclick=()=>{
  const id=btn.dataset.pawn;if(btn.disabled)return;selectedPawn=id;renderPawnChoices(joinChecked?window.takenPawns||[]:[]);
@@ -440,6 +484,15 @@ function meetingSound(){
  }catch(e){}
  [784,659,784,988].forEach((f,i)=>setTimeout(()=>playTone(f,.22,'sine',.11),i*180));
 }
+function victorySound(){
+ try{
+  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+ }catch(e){}
+ const notes=[523.25,659.25,783.99,1046.5,783.99,1046.5,1318.51];
+ notes.forEach((f,i)=>setTimeout(()=>playTone(f,.28,'triangle',.13),i*145));
+ setTimeout(()=>playTone(1567.98,.55,'sine',.12),1100);
+}
 function purchaseSound(){
  // เสียงเหรียญและกระดิ่งเมื่อซื้อพื้นที่สำเร็จ
  try{
@@ -468,58 +521,68 @@ async function showCountdown(seconds=3){
 }
 function musicStep(){
  if(!audioCtx||!musicOn)return;
- const step=musicStepIndex++%16,now=audioCtx.currentTime;
- const bass=[65.41,65.41,98,65.41,87.31,87.31,130.81,87.31,73.42,73.42,110,73.42,98,98,146.83,98];
- const melody=[261.63,0,329.63,392,0,329.63,440,392,349.23,0,392,440,0,392,493.88,440];
- const chordRoots=[130.81,174.61,146.83,196.00];
- // Plucked bass: warm electric-bass style
- if(step%4===0||step%4===2){
+ // เพลงประกอบต้นฉบับแนว 8-bit platform adventure:
+ // จังหวะเด้ง สนุก สดใส มีเบสเดิน เมโลดี้ซิงโคเปชัน และเสียงเพอร์คัสชัน
+ // ออกแบบใหม่ ไม่ได้คัดลอกทำนองจากเกมหรือเพลงที่มีลิขสิทธิ์
+ const step=musicStepIndex++%32,now=audioCtx.currentTime;
+ const lead=[
+  392,0,523.25,587.33,659.25,0,587.33,523.25,
+  440,0,523.25,659.25,783.99,659.25,587.33,0,
+  349.23,0,440,523.25,587.33,0,523.25,440,
+  392,493.88,587.33,659.25,783.99,0,659.25,523.25
+ ];
+ const bass=[
+  98,0,98,146.83,130.81,0,130.81,196,
+  110,0,110,164.81,146.83,0,146.83,220,
+  87.31,0,87.31,130.81,116.54,0,116.54,174.61,
+  98,0,98,146.83,130.81,0,130.81,196
+ ];
+ const roots=[196,220,174.61,196];
+ const playNote=(freq,type,peak,duration,attack=.008)=>{
+  if(!freq)return;
   const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.type='triangle';o.frequency.setValueAtTime(bass[step],now);
-  o.frequency.exponentialRampToValueAtTime(Math.max(35,bass[step]*.72),now+.16);
-  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.11,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+.22);
-  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.24);
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  g.gain.setValueAtTime(.0001,now);
+  g.gain.exponentialRampToValueAtTime(peak,now+attack);
+  g.gain.exponentialRampToValueAtTime(.0001,now+duration);
+  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+duration+.015);
+ };
+ // Bouncy bass line with short off-beat notes.
+ if(bass[step])playNote(bass[step],'triangle',.105,.19,.012);
+ // Bright retro lead: pulse wave with short, plucky envelope.
+ if(lead[step])playNote(lead[step],'square',.038,.14,.006);
+ // Little high-register answer notes create a playful call-and-response.
+ const sparkle={3:1046.5,7:987.77,11:1174.66,15:1046.5,19:880,23:987.77,27:1174.66,31:1046.5};
+ if(sparkle[step])playNote(sparkle[step],'sine',.025,.10,.004);
+ // Chord stabs at the start of each 8-step phrase.
+ if(step%8===0){
+  const root=roots[Math.floor(step/8)%roots.length];
+  [root,root*1.25,root*1.5].forEach((f,i)=>playNote(f,'triangle',i===0?.025:.018,.34,.025));
  }
- // Bright marimba-like melody
- if(melody[step]){
-  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.type='sine';o.frequency.setValueAtTime(melody[step],now);
-  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.065,now+.008);g.gain.exponentialRampToValueAtTime(.0001,now+.20);
-  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.22);
- }
- // Soft chord pad every bar
+ // Kick on the beat and a crisp snare-like pop on alternating beats.
  if(step%4===0){
-  const root=chordRoots[Math.floor(step/4)%4];
-  [root,root*1.25,root*1.5].forEach((freq,j)=>{
-   const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-   o.type='triangle';o.frequency.value=freq;
-   g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.018,now+.035);g.gain.exponentialRampToValueAtTime(.0001,now+.48);
-   o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.5);
-  });
- }
- // Kick drum on the downbeat, snare/clap on backbeat, hi-hat subdivisions
- if(step%4===0){
   const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.type='sine';o.frequency.setValueAtTime(115,now);o.frequency.exponentialRampToValueAtTime(42,now+.13);
-  g.gain.setValueAtTime(.16,now);g.gain.exponentialRampToValueAtTime(.0001,now+.16);
-  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.17);
+  o.type='sine';o.frequency.setValueAtTime(135,now);
+  o.frequency.exponentialRampToValueAtTime(48,now+.105);
+  g.gain.setValueAtTime(.12,now);g.gain.exponentialRampToValueAtTime(.0001,now+.13);
+  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.14);
  }
  if(step%8===4){
-  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.type='triangle';o.frequency.setValueAtTime(185,now);
-  g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.045,now+.004);g.gain.exponentialRampToValueAtTime(.0001,now+.09);
-  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.1);
+  playNote(210,'triangle',.035,.075,.003);
+  playNote(165,'sine',.022,.065,.003);
  }
+ // Light 8-bit hi-hat ticks keep the groove moving.
  if(step%2===1){
-  const buffer=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*.045),audioCtx.sampleRate),data=buffer.getChannelData(0);
-  for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
+  const length=Math.floor(audioCtx.sampleRate*.035);
+  const buffer=audioCtx.createBuffer(1,length,audioCtx.sampleRate),data=buffer.getChannelData(0);
+  for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(1-i/length);
   const src=audioCtx.createBufferSource(),g=audioCtx.createGain(),filter=audioCtx.createBiquadFilter();
-  src.buffer=buffer;filter.type='highpass';filter.frequency.value=6500;
-  g.gain.value=.025;src.connect(filter);filter.connect(g);g.connect(audioCtx.destination);src.start(now);
+  src.buffer=buffer;filter.type='highpass';filter.frequency.value=7200;
+  g.gain.value=.018;src.connect(filter);filter.connect(g);g.connect(audioCtx.destination);src.start(now);
  }
 }
 $('music').onclick=async()=>{
- if(!musicOn){audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();await audioCtx.resume();musicOn=true;musicStepIndex=0;musicStep();musicTimer=setInterval(musicStep,150);$('music').textContent='♫ เพลง: เปิด · สนุก'}
+ if(!musicOn){audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();await audioCtx.resume();musicOn=true;musicStepIndex=0;musicStep();musicTimer=setInterval(musicStep,125);$('music').textContent='♫ เพลง: เปิด · สนุก'}
  else{musicOn=false;clearInterval(musicTimer);musicTimer=null;if(audioCtx)await audioCtx.suspend();$('music').textContent='♫ เพลง: ปิด'}
 };
 connect();
