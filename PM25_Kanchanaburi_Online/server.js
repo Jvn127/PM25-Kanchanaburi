@@ -25,28 +25,61 @@ function pub(r){io.to(r.code).emit('state',publicState(r))}
 function msg(r,s){io.to(r.code).emit('message',s)}
 function current(r,s){return r.players[r.current]&&r.players[r.current].id===s.id}
 function advance(r){
- if(!r.players.length)return;
+ if(!r.players.length||!r.started)return;
+ if(r.pendingTimer){clearTimeout(r.pendingTimer);r.pendingTimer=null;}
  r.current=(r.current+1)%r.players.length;
  r.rolled=false;r.dice=null;r.pending=null;r.moving=null;
- // เงินคงเหลือเป็นศูนย์ไม่ทำให้ผู้เล่นหมดสิทธิ์ทอยลูกเต๋า
+ r.turnSeq=(r.turnSeq||0)+1;
+ pub(r);
+ maybeMeetingOrFinish(r);
  pub(r);
 }
-function completeMovement(r,playerId){
+function completeMovement(r,playerId,turnId){
  if(!r||!r.started||r.moving!==playerId)return false;
+ if(turnId!==undefined&&turnId!==r.turnSeq)return false;
  r.moving=null;
  if(r.pending&&r.pending.player===playerId){
   const offer={name:r.pending.name,price:r.pending.price,index:r.pending.index,pollution:r.pending.pollution,offerId:`${r.code}-${playerId}-${r.pending.index}-${Date.now()}`};
   r.pending.offerId=offer.offerId;
   io.to(playerId).emit('purchaseOffer',offer);
+  if(r.pendingTimer)clearTimeout(r.pendingTimer);
+  const expectedTurn=r.turnSeq;
+  r.pendingTimer=setTimeout(()=>{
+   if(!r.started||!r.pending||r.pending.player!==playerId||r.turnSeq!==expectedTurn)return;
+   msg(r,`${r.players[r.current]?.name||'ผู้เล่น'} ไม่ตอบข้อเสนอซื้อภายในเวลาที่กำหนด ระบบผ่านพื้นที่ให้อัตโนมัติ`);
+   advance(r);
+  },30000);
   pub(r);return true;
  }
- advance(r);maybeMeetingOrFinish(r);pub(r);return true;
+ advance(r);return true;
 }
-function finishGame(r,reason){
- if(!r.started)return;r.started=false;r.meeting=null;
- const max=Math.max(...r.players.map(p=>p.cash)),winners=r.players.filter(p=>p.cash===max);
- io.to(r.code).emit('gameOver',{winners:winners.map(p=>p.name),cash:max,reason,standings:r.players.slice().sort((a,b)=>b.cash-a.cash).map(p=>({name:p.name,cash:p.cash,credits:p.credits,assets:p.assets.length}))});
- msg(r,reason||'ครบเวลา 30 นาที');pub(r);
+function finishGame(r,reason,instantWinnerId=null){
+ if(!r.started)return;
+ r.started=false;r.meeting=null;r.moving=null;r.rolled=true;
+ if(r.pendingTimer){clearTimeout(r.pendingTimer);r.pendingTimer=null;}
+ r.pending=null;
+ const sorted=r.players.slice().sort((a,b)=>b.cash-a.cash||b.credits-a.credits);
+ let winners=[];
+ if(instantWinnerId){
+  const winner=r.players.find(p=>p.id===instantWinnerId);
+  if(winner)winners=[winner];
+ }else{
+  const bestCash=sorted[0]?.cash??0;
+  const cashLeaders=sorted.filter(p=>p.cash===bestCash);
+  const bestCredits=Math.max(...cashLeaders.map(p=>p.credits||0));
+  winners=cashLeaders.filter(p=>(p.credits||0)===bestCredits);
+ }
+ const winnerRule=instantWinnerId?'เครดิตครบ 40 ชนะทันที':'เงินคงเหลือมากที่สุด และใช้เครดิตตัดสินเมื่อเงินเท่ากัน';
+ io.to(r.code).emit('gameOver',{
+  winners:winners.map(p=>p.name),
+  cash:winners[0]?.cash||0,
+  credits:winners[0]?.credits||0,
+  reason,
+  winnerRule,
+  instant:!!instantWinnerId,
+  standings:sorted.map(p=>({name:p.name,cash:p.cash,credits:p.credits,assets:p.assets.length}))
+ });
+ msg(r,reason||'จบเกม');pub(r);
 }
 function charge(r,p,n,reason){const amount=Math.min(p.cash,n);p.cash-=amount;msg(r,`${p.name} จ่าย ${amount} บาท (${reason})`)}
 function credit(r,p,n,reason){p.cash+=n;msg(r,`${p.name} ได้รับ ${n} บาท (${reason})`)}
@@ -87,7 +120,7 @@ io.on('connection',s=>{
   if(!PAWNS.includes(pawn))return s.emit('errorMessage','กรุณาเลือกตัวหมากก่อนสร้างห้อง');
   const code=Math.random().toString(36).slice(2,8).toUpperCase();
   const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:1000,credits:0,pos:0,assets:[],alive:true};
-  const r={code,host:s.id,players:[p],current:0,started:false,countdown:false,startedAt:null,rolled:false,dice:null,moving:null,owners:{},pending:null,pm25:0,meeting:null,meetingsDone:[]};
+  const r={code,host:s.id,players:[p],current:0,started:false,countdown:false,startedAt:null,rolled:false,dice:null,moving:null,turnSeq:0,pendingTimer:null,owners:{},pending:null,pm25:0,meeting:null,meetingsDone:[]};
   rooms.set(code,r);s.join(code);s.emit('message','สร้างห้องแล้ว! แชร์รหัสห้อง '+code+' ให้เพื่อน');pub(r);
  });
  s.on('checkRoom',({room})=>{
@@ -127,22 +160,22 @@ io.on('connection',s=>{
   const crossedStart=(old+steps)>=40;
   p.pos=(old+steps)%40;
   if(crossedStart)credit(r,p,300,'ผ่านจุดเริ่มต้น');
-  r.rolled=true;r.moving=p.id;land(r,p);
-  io.to(r.code).emit('playerMoved',{playerId:p.id,from:old,to:p.pos,steps:a+b,dice:r.dice});
+  r.rolled=true;r.moving=p.id;r.turnSeq=(r.turnSeq||0)+1;const turnId=r.turnSeq;land(r,p);
+  io.to(r.code).emit('playerMoved',{playerId:p.id,from:old,to:p.pos,steps:a+b,dice:r.dice,turnId});
   pub(r);
-  setTimeout(()=>completeMovement(r,p.id),15000);
+  setTimeout(()=>completeMovement(r,p.id,turnId),15000);
  });
- s.on('movementComplete',({room})=>{
+ s.on('movementComplete',({room,turnId})=>{
   const r=rooms.get(String(room||'').toUpperCase());
   if(!r||!current(r,s))return;
-  completeMovement(r,s.id);
+  completeMovement(r,s.id,turnId);
  });
  s.on('buy',({room})=>{
   const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||!r.pending||r.moving||r.pending.player!==s.id||!current(r,s))return;
   const p=r.players.find(x=>x.id===s.id),i=r.pending.index,price=places[i][1];
   if(p.cash>=price){p.cash-=price;p.assets.push(i);r.owners[i]=p.id;r.pm25+=pollutionFor(i);msg(r,`${p.name} ซื้อ ${places[i][0]} และเพิ่ม PM2.5 ${pollutionFor(i)} หน่วย`);
    s.emit('purchaseResult',{success:true,name:places[i][0]});
-   advance(r);maybeMeetingOrFinish(r);pub(r);return;
+   advance(r);return;
   }else{
    r.pending.awaitingFailureAck=true;
    s.emit('purchaseResult',{success:false,name:places[i][0],message:'เงินของท่านไม่เพียงพอ'});
@@ -163,6 +196,7 @@ io.on('connection',s=>{
    if(p.cash<MEETING_FEE)return s.emit('errorMessage','เงินไม่เพียงพอ ต้องมีอย่างน้อย 300 บาทเพื่อยืนยัน');
    p.cash-=MEETING_FEE;p.credits+=MEETING_CREDITS;r.pm25=Math.max(0,r.pm25-MEETING_REDUCTION);
    msg(r,`${p.name} ยืนยันมาตรการ: จ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วย`);
+   if(p.credits>=40){finishGame(r,`${p.name} มีเครดิตครบ 40 คะแนน ชนะทันที`,p.id);return;}
   }else if(answer==='reject'){msg(r,`${p.name} ปฏิเสธมาตรการ: ไม่เสียเงินและเครดิตคงเดิม`)}else return;
   r.meeting.answers[s.id]=answer;pub(r);
   if(r.players.every(x=>r.meeting.answers[x.id])){
@@ -171,7 +205,18 @@ io.on('connection',s=>{
    io.to(r.code).emit('meetingEnd',{number:n});msg(r,'ผู้เล่นตอบครบแล้ว กลับเข้าสู่เกม');maybeMeetingOrFinish(r);pub(r);
   }
  });
- s.on('disconnect',()=>{for(const r of rooms.values()){const p=r.players.find(x=>x.id===s.id);if(p){p.connected=false;msg(r,p.name+' หลุดการเชื่อมต่อ');pub(r)}}});
+ s.on('disconnect',()=>{
+ for(const r of rooms.values()){
+  const p=r.players.find(x=>x.id===s.id);
+  if(!p)continue;
+  p.connected=false;msg(r,p.name+' หลุดการเชื่อมต่อ');
+  if(r.started&&current(r,s)){
+   if(r.pending&&r.pending.player===s.id){msg(r,p.name+' หลุดระหว่างเลือกซื้อ ระบบผ่านพื้นที่ให้อัตโนมัติ');advance(r);}
+   else if(r.moving===s.id&&r.pending&&r.pending.player===s.id){r.moving=null;msg(r,p.name+' หลุดระหว่างเดิน ระบบผ่านพื้นที่ให้อัตโนมัติ');advance(r);}
+   else if(r.moving===s.id){completeMovement(r,s.id,r.turnSeq);}
+  }else pub(r);
+ }
+});
 });
 setInterval(()=>{for(const r of rooms.values())if(r.started){maybeMeetingOrFinish(r);io.to(r.code).emit('timerTick',{elapsedSeconds:Math.min(GAME_SECONDS,elapsed(r)),pm25:r.pm25})}},1000);
 const port=process.env.PORT||3000;server.listen(port,()=>console.log('PM25 Kanchanaburi listening on '+port));

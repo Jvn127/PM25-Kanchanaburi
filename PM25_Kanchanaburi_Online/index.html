@@ -335,7 +335,7 @@ function connect(){
    // เว้นจังหวะชัดเจน 3 วินาทีหลังเดินถึงช่อง ก่อนเปิดหน้าต่างซื้อ/เปลี่ยนตา
    if(m.playerId===myId){
     await sleep(3000);
-    socket.emit('movementComplete',{room});
+    socket.emit('movementComplete',{room,turnId:m.turnId});
    }
   }
 });
@@ -388,8 +388,14 @@ socket.on('meetingEnd',()=>close());
  });
  socket.on('gameOver',w=>{
  const winners=(w.winners||[]).join(' และ ');
- const table=(w.standings||[]).map((p,i)=>(i+1)+'. '+p.name+' — '+p.cash.toLocaleString()+' บาท (เครดิต '+p.credits+', ทรัพย์สิน '+p.assets+' แห่ง)').join('<br>');
- modal('🏆 จบเกม — ผู้ชนะ: '+winners,'เงินคงเหลือสูงสุด '+(w.cash||0).toLocaleString()+' บาท<br><br><b>สรุปอันดับ</b><br>'+table+'<br><br><b>เกณฑ์ชนะ:</b> เงินสดคงเหลือมากที่สุดเท่านั้น',[{text:'ปิด',fn:close}]);
+ const table=(w.standings||[]).map((p,i)=>(i+1)+'. '+p.name+' — '+Number(p.cash||0).toLocaleString()+' บาท (เครดิต '+(p.credits||0)+', ทรัพย์สิน '+(p.assets||0)+' แห่ง)').join('<br>');
+ const rule=w.winnerRule||'เงินคงเหลือมากที่สุด และใช้เครดิตตัดสินเมื่อเงินเท่ากัน';
+ const detail=w.instant
+  ? '<b>ชนะทันที!</b> เครดิตครบ 40 คะแนน'
+  : 'เงินสด '+Number(w.cash||0).toLocaleString()+' บาท · เครดิต '+(w.credits||0);
+ modal('🏆 จบเกม — ผู้ชนะ: '+winners,
+  '<b>สาเหตุ:</b> '+(w.reason||'จบเกม')+'<br>'+detail+'<br><br><b>สรุปอันดับ</b><br>'+table+'<br><br><b>เกณฑ์ตัดสิน:</b> '+rule,
+  [{text:'ปิด',fn:close}]);
 });
 }
 $('playBtn').onclick=()=>{$('playBtn').style.display='none';$('roomOptions').style.display='block';$('playerName').focus()};
