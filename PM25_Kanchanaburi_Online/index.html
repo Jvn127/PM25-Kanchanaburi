@@ -54,7 +54,13 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .alt{background:#31575a;color:white;border:1px solid #82a393;padding:9px 13px;font-weight:700}
 .log{font-size:10px;color:#d2e3d8;max-height:48px;overflow:auto;line-height:1.5}
-.roomtag{font-size:11px;color:#ffe49a;text-align:right}.timer{font:clamp(18px,2vw,27px) 'Press Start 2P',monospace;color:#ffe39a;text-align:center;margin:4px 0 8px;text-shadow:2px 2px #533}.gender-row{display:flex;gap:10px;justify-content:center;margin:12px 0}.gender-choice{flex:1;background:#24484a;color:#f7f1d9;border:2px solid #789d8d;padding:9px 6px;font-weight:800}.gender-choice.selected{border-color:#ffe27b;background:#496b55;box-shadow:0 0 0 2px #9d7a39}.lobby-fields{display:grid;gap:8px;margin:12px 0}.lobby-fields input{width:100%;padding:12px;background:#e8e2c7;color:#182e2b;border:2px solid #9d9a6c}
+.roomtag{font-size:11px;color:#ffe49a;text-align:right}.timer{font:clamp(18px,2vw,27px) 'Press Start 2P',monospace;color:#ffe39a;text-align:center;margin:4px 0 8px;text-shadow:2px 2px #533}.pawn-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.pawn-choice{min-width:0;background:#24484a;color:#f7f1d9;border:2px solid #789d8d;border-radius:8px;padding:7px 4px;font-weight:800;display:flex;flex-direction:column;align-items:center;gap:5px}
+.pawn-choice img{width:100%;height:78px;object-fit:contain;image-rendering:pixelated}
+.pawn-choice.selected{border:3px solid #ffe27b;background:#496b55;box-shadow:0 0 0 2px #9d7a39}
+.pawn-choice.taken{opacity:.3;filter:grayscale(1);cursor:not-allowed;text-decoration:line-through}
+.pawn-choice small{font-size:10px;color:#ffe7a6}
+@media(max-width:520px){.pawn-choice img{height:56px}.pawn-grid{gap:4px}}.lobby-fields{display:grid;gap:8px;margin:12px 0}.lobby-fields input{width:100%;padding:12px;background:#e8e2c7;color:#182e2b;border:2px solid #9d9a6c}
 #lobby{position:fixed;inset:64px 0 0;z-index:5;display:flex;align-items:center;justify-content:center;padding:18px;background:linear-gradient(#09252b77,#09252bd9),url('background-kanchanaburi.png') center/cover}
 .lobby-card{width:min(560px,95vw);padding:clamp(20px,4vw,38px);background:#102b30ed;border:3px solid #d0b36d;box-shadow:9px 9px #06191c;text-align:center}
 .lobby-title{font:clamp(17px,3vw,29px) 'Press Start 2P',monospace;color:var(--gold);line-height:1.8;text-shadow:3px 3px #573e28}
@@ -80,8 +86,6 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 @keyframes tokenWalk{from{transform:translateY(0) scaleX(.94)}to{transform:translateY(-5px) scaleX(1.05)}}
 .tile.current{animation:tilePulse .65s ease-in-out 2}
 @keyframes tilePulse{50%{filter:brightness(1.3);box-shadow:0 0 0 3px #ffe27b}}
-.gender-choice{display:flex;align-items:center;justify-content:center;gap:8px}
-.gender-choice img{width:34px;height:48px;object-fit:contain;image-rendering:pixelated}
 @media(prefers-reduced-motion:reduce){.die.rolling,.token.walking,.tile.current{animation:none}}
 </style>
 </head>
@@ -104,11 +108,14 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
   <div id="roomOptions" class="room-options">
     <div class="lobby-fields">
       <input id="playerName" maxlength="20" placeholder="ชื่อผู้เล่น">
-      <div style="font-weight:800;color:#ffe39a">เลือกตัวละครก่อนเข้าห้อง</div>
-      <div class="gender-row">
-        <button type="button" id="maleChoice" class="gender-choice selected"><img src="/assets/engineer-male-red.png" alt=""> วิศวกรชาย</button>
-        <button type="button" id="femaleChoice" class="gender-choice"><img src="/assets/engineer-female-red.png" alt=""> วิศวกรหญิง</button>
+      <div style="font-weight:800;color:#ffe39a">เลือกตัวหมากประจำตัว (ห้ามเลือกซ้ำ)</div>
+      <div id="pawnGrid" class="pawn-grid">
+        <button type="button" class="pawn-choice" data-pawn="helmet"><img src="/assets/pawn-helmet.png" alt="หมวกวิศวกร"><span>หมวกวิศวกร</span></button>
+        <button type="button" class="pawn-choice" data-pawn="flask"><img src="/assets/pawn-flask.png" alt="ขวดเก็บตัวอย่าง"><span>ขวดตัวอย่าง</span></button>
+        <button type="button" class="pawn-choice" data-pawn="recycle"><img src="/assets/pawn-recycle.png" alt="รีไซเคิล"><span>รีไซเคิล</span></button>
+        <button type="button" class="pawn-choice" data-pawn="pm25"><img src="/assets/pawn-pm25.png" alt="PM2.5"><span>PM2.5</span></button>
       </div>
+      <div id="pawnHint" class="hint">เลือกตัวหมาก 1 แบบก่อนสร้างหรือเข้าร่วมห้อง</div>
     </div>
    <div class="option-row"><button id="create" class="btn">＋ สร้างห้องใหม่</button><button id="showJoin" class="alt">เข้าร่วมห้อง</button></div>
    <div id="joinBox" style="display:none"><input id="code" placeholder="กรอกรหัสห้อง เช่น A1B2C3"><button id="join" class="btn" style="width:100%">เข้าร่วมเกม</button></div>
@@ -146,15 +153,33 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 (()=>{
 const $=id=>document.getElementById(id);
 let socket=null,state=null,myId=null,room=null,audioCtx=null,musicTimer=null,musicOn=false,noteIndex=0;
+const pawnInfo={
+ helmet:{name:'หมวกวิศวกร',color:'#8f3f55',image:'/assets/pawn-helmet.png'},
+ flask:{name:'ขวดตัวอย่าง',color:'#55a9ed',image:'/assets/pawn-flask.png'},
+ recycle:{name:'รีไซเคิล',color:'#65cb86',image:'/assets/pawn-recycle.png'},
+ pm25:{name:'PM2.5',color:'#f08a32',image:'/assets/pawn-pm25.png'}
+};
 const colors=['#8f3f55','#55a9ed','#65cb86','#f08a32'];
-const sprite=['red','blue','green','orange'];
 
-let selectedGender='male',timerInterval=null,displayedPositions=new Map(),pendingOffer=null,offerTimer=null,moveLock=false,musicStepIndex=0,displayedDice=null;
+let selectedPawn=null,availablePawns=['helmet','flask','recycle','pm25'],joinChecked=false,joinCodeChecked='',timerInterval=null,displayedPositions=new Map(),pendingOffer=null,offerTimer=null,moveLock=false,musicStepIndex=0,displayedDice=null;
 const places=[
 ['จุดเริ่มต้น',0],['สะพานข้ามแม่น้ำแคว',60],['กองกลาง',0],['สุสานทหารสัมพันธมิตร',60],['ค่าธรรมเนียมอุทยาน',100],['รถไฟสายมรณะ',200],['พิพิธภัณฑ์ช่องเขาขาด',100],['โอกาส',0],['น้ำตกไทรโยคน้อย',100],['น้ำตกเอราวัณ',120],['พักสถานี',0],['เขื่อนศรีนครินทร์',140],['กิจกรรมล่องแพ',150],['ถ้ำกระแซ',140],['เมืองมัลลิกา',160],['รถไฟสายมรณะ',200],['วัดถ้ำเสือ',180],['กองกลาง',0],['ต้นจามจุรียักษ์',180],['วัดเมตตาธรรมโพธิญาณ',200],['จุดชมวิว',0],['น้ำตกห้วยแม่ขมิ้น',220],['โอกาส',0],['เขื่อนวชิราลงกรณ',220],['ปิล๊อก–บ้านอีต่อง',240],['รถไฟสายมรณะ',200],['เหมืองปิล็อก',260],['ล่องแพแม่น้ำแคว',150],['สะพานมอญ',260],['เจดีย์พุทธคยา',280],['ไปสถานีพัก',0],['น้ำพุร้อนหินดาด',300],['อุทยานทองผาภูมิ',300],['กองกลาง',0],['อุทยานไทรโยค',320],['รถไฟสายมรณะ',200],['เขาช้างเผือก',350],['โอกาส',0],['อุทยานแห่งชาติเอราวัณ',400],['ภาษีท่องเที่ยว',100]];
 const pos=[];for(let i=0;i<=10;i++)pos.push([10-i,10]);for(let i=1;i<=10;i++)pos.push([0,10-i]);for(let i=1;i<=10;i++)pos.push([i,0]);for(let i=1;i<=9;i++)pos.push([10,i]);
 const tileColors=['#86b77b','#77b8c5','#c99a82','#d5bd68','#8eb5a0'];
-function spriteUrl(p,idx){return '/assets/engineer-'+(p.gender==='female'?'female':'male')+'-'+sprite[idx]+'.png'}
+function spriteUrl(p){return pawnInfo[p.pawn]?.image||pawnInfo.helmet.image}
+function renderPawnChoices(taken=[]){
+ const takenSet=new Set(taken);
+ document.querySelectorAll('.pawn-choice').forEach(btn=>{
+  const id=btn.dataset.pawn,blocked=takenSet.has(id);
+  btn.classList.toggle('taken',blocked);btn.classList.toggle('selected',selectedPawn===id);
+  btn.disabled=blocked;
+  const label=btn.querySelector('span');
+  if(label)label.textContent=pawnInfo[id].name+(blocked?' · ถูกเลือกแล้ว':'');
+ });
+ $('pawnHint').textContent=selectedPawn
+  ? 'เลือกแล้ว: '+pawnInfo[selectedPawn].name
+  : 'กรุณาเลือกตัวหมากที่ยังว่าง 1 แบบ';
+}
 function drawDie(id,value){
  const patterns={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
  const el=$(id);if(!el)return;el.dataset.value=value;
@@ -177,7 +202,7 @@ function showMeeting(meeting){$('modal').dataset.meetingShown='1';
  [{text:'ยืนยันมาตรการ',fn:()=>{socket.emit('meetingAnswer',{room,answer:'confirm'});modal('ส่งคำตอบแล้ว','คุณเลือกยืนยันมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ',[{text:'รอ',fn:()=>{}}]);}},
   {text:'ปฏิเสธ',alt:true,fn:()=>{socket.emit('meetingAnswer',{room,answer:'reject'});modal('ส่งคำตอบแล้ว','คุณเลือกปฏิเสธมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ',[{text:'รอ',fn:()=>{}}]);}}]);
 }
-function joinRoom(code){const name=$('playerName').value.trim()||'Engineer';socket.emit('join',{room:code,name,gender:selectedGender})}
+function joinRoom(code){const name=$('playerName').value.trim()||'Engineer';if(!selectedPawn){modal('กรุณาเลือกตัวหมาก','โปรดเลือกตัวหมากที่ยังว่างก่อนเข้าร่วมห้อง',[{text:'ตกลง',fn:close}]);return}socket.emit('join',{room:code,name,pawn:selectedPawn})}
 function enterGame(){ $('lobby').style.display='none';$('game').style.display='block'; }
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function animateMove(previous,next){
@@ -210,8 +235,8 @@ function render(){
  const currentPlayer=state.players[state.current];
  $('players').innerHTML=Array.from({length:4},(_,i)=>{
   const p=state.players[i];
-  if(!p)return `<div class="player empty" style="--player-color:${colors[i]}"><span style="font-size:25px">＋</span><div><div class="pname">รอผู้เล่น ${i+1}</div><div class="pmeta">สีประจำทีม ${['แดงเลือดหมู','น้ำเงิน','เขียว','ส้ม'][i]}</div></div></div>`;
-  return `<div class="player ${p.id===currentPlayer?.id?'active':''}" style="--player-color:${colors[i]}"><img class="avatar" src="${spriteUrl(p,i)}" alt=""><div style="min-width:0"><div class="pname">${p.name}</div><div class="pmoney">${p.cash.toLocaleString()} ฿</div><div class="pmeta">${p.assets.length} พื้นที่ · เครดิต ${p.credits||0}</div></div></div>`;
+  if(!p)return `<div class="player empty" style="--player-color:${p.color||colors[i]}"><span style="font-size:25px">＋</span><div><div class="pname">รอผู้เล่น ${i+1}</div><div class="pmeta">สีประจำทีม ${['แดงเลือดหมู','น้ำเงิน','เขียว','ส้ม'][i]}</div></div></div>`;
+  return `<div class="player ${p.id===currentPlayer?.id?'active':''}" style="--player-color:${p.color||colors[i]}"><img class="avatar" src="${spriteUrl(p)}" alt=""><div style="min-width:0"><div class="pname">${p.name} · ${pawnInfo[p.pawn]?.name||"ตัวหมาก"}</div><div class="pmoney">${p.cash.toLocaleString()} ฿</div><div class="pmeta">${p.assets.length} พื้นที่ · เครดิต ${p.credits||0}</div></div></div>`;
  }).join('');
  $('status').textContent=state.started?(currentPlayer?.name||'')+' กำลังเล่น':'รอเริ่มเกม (อย่างน้อย 2 คน)';
  $('roll').disabled=!state.started||!!state.meeting||currentPlayer?.id!==myId||state.rolled;
@@ -235,11 +260,12 @@ function render(){
   const price=document.createElement('small');price.textContent=places[i][1]?places[i][1]+' ฿':'';t.appendChild(price);
   if(owner!==undefined){const o=document.createElement('div');o.className='owner';o.style.color=state.players.find(p=>p.id===owner)?.color||'#333';o.textContent=state.players.find(p=>p.id===owner)?.name||'มีเจ้าของ';t.appendChild(o)}
   const tokens=document.createElement('div');tokens.className='tokens';
-  state.players.filter(p=>(displayedPositions.get(p.id)??p.pos)===i).forEach(p=>{const idx=state.players.indexOf(p);const tok=document.createElement('img');tok.className='token'+(displayedPositions.has(p.id)?' walking':'');tok.src=spriteUrl(p,idx);tok.alt=p.name;tokens.appendChild(tok)});
+  state.players.filter(p=>(displayedPositions.get(p.id)??p.pos)===i).forEach(p=>{const idx=state.players.indexOf(p);const tok=document.createElement('img');tok.className='token'+(displayedPositions.has(p.id)?' walking':'');tok.src=spriteUrl(p);tok.alt=p.name;tokens.appendChild(tok)});
   t.appendChild(tokens);board.appendChild(t);
  });
  $('startGame').style.display=canHostStart?'inline-block':'none';
 }
+renderPawnChoices([]);
 function connect(){
  if(typeof io==='undefined'){$('connection').textContent='● ไม่พบการเชื่อมต่อเซิร์ฟเวอร์';return}
  socket=io();
@@ -255,6 +281,18 @@ function connect(){
  if(s.meeting&&!$('modal').dataset.meetingShown){$('modal').dataset.meetingShown='1';showMeeting(s.meeting)}
  if(!s.meeting){$('modal').dataset.meetingShown='';}
 });
+ socket.on('roomInfo',info=>{
+  joinChecked=true;joinCodeChecked=info.code;window.takenPawns=info.takenPawns||[];
+  if(selectedPawn&&window.takenPawns.includes(selectedPawn))selectedPawn=null;
+  renderPawnChoices(window.takenPawns);
+  $('join').disabled=false;$('join').textContent='เข้าร่วมห้อง';
+  $('pawnHint').textContent='ตัวหมากที่ถูกเลือกแล้วจะกดไม่ได้ เลือกตัวที่ยังว่าง';
+ });
+ socket.on('pawnUnavailable',info=>{
+  joinChecked=false;selectedPawn=null;window.takenPawns=info.takenPawns||[];
+  renderPawnChoices(window.takenPawns);$('join').disabled=false;$('join').textContent='ตรวจสอบห้อง';
+  modal('ตัวหมากถูกเลือกแล้ว',info.message||'กรุณาเลือกตัวหมากอื่น',[{text:'ตกลง',fn:close}]);
+ });
  socket.on('playerMoved',async m=>{
   if(!state)return;
   displayedDice=m.dice||displayedDice;
@@ -279,7 +317,7 @@ socket.on('meetingEnd',()=>close());
   socket.on('timerTick',t=>{if(state){state.elapsedSeconds=t.elapsedSeconds;state.pm25=t.pm25;updateTimer()}});
   socket.on('message',m=>log(m));
   socket.on('gameCountdown',c=>{if($('startGame'))$('startGame').disabled=true;if($('hostStart'))$('hostStart').disabled=true;showCountdown(c.seconds||3).finally(()=>{if($('startGame'))$('startGame').disabled=false;if($('hostStart'))$('hostStart').disabled=false})});
- socket.on('errorMessage',m=>modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close}]));
+ socket.on('errorMessage',m=>{$('join').disabled=false;modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close}])});
  socket.on('purchaseOffer',o=>{
   // แสดงหน้าต่างซื้อทันทีหลังเดินถึงช่อง ไม่หน่วงเวลา และป้องกัน event ซ้ำ
   if(!o||pendingOffer?.offerId===o.offerId)return;
@@ -319,11 +357,21 @@ socket.on('meetingEnd',()=>close());
 });
 }
 $('playBtn').onclick=()=>{$('playBtn').style.display='none';$('roomOptions').style.display='block';$('playerName').focus()};
-$('maleChoice').onclick=()=>{selectedGender='male';$('maleChoice').classList.add('selected');$('femaleChoice').classList.remove('selected')};
-$('femaleChoice').onclick=()=>{selectedGender='female';$('femaleChoice').classList.add('selected');$('maleChoice').classList.remove('selected')};
-$('showJoin').onclick=()=>{$('joinBox').style.display=$('joinBox').style.display==='block'?'none':'block';$('code').focus()};
-$('create').onclick=()=>{const name=$('playerName').value.trim()||'Engineer';socket.emit('create',{name,gender:selectedGender})};
-$('join').onclick=()=>{const c=$('code').value.trim().toUpperCase();if(c)joinRoom(c);else modal('กรุณากรอกรหัสห้อง','ขอรหัสห้องจากเพื่อนก่อน',[{text:'ตกลง',fn:close}])};
+document.querySelectorAll('.pawn-choice').forEach(btn=>btn.onclick=()=>{
+ const id=btn.dataset.pawn;if(btn.disabled)return;selectedPawn=id;renderPawnChoices(joinChecked?window.takenPawns||[]:[]);
+});
+$('showJoin').onclick=()=>{$('joinBox').style.display=$('joinBox').style.display==='block'?'none':'block';joinChecked=false;joinCodeChecked='';$('join').textContent='ตรวจสอบห้อง';$('code').focus()};
+$('create').onclick=()=>{
+ const name=$('playerName').value.trim()||'Engineer';
+ if(!selectedPawn){modal('กรุณาเลือกตัวหมาก','เลือกตัวหมาก 1 แบบก่อนสร้างห้อง',[{text:'ตกลง',fn:close}]);return}
+ socket.emit('create',{name,pawn:selectedPawn});
+};
+$('join').onclick=()=>{
+ const c=$('code').value.trim().toUpperCase();
+ if(!c){modal('กรุณากรอกรหัสห้อง','ขอรหัสห้องจากเพื่อนก่อน',[{text:'ตกลง',fn:close}]);return}
+ if(!joinChecked||joinCodeChecked!==c){joinChecked=false;joinCodeChecked=c;selectedPawn=null;$('join').disabled=true;socket.emit('checkRoom',{room:c});return}
+ joinRoom(c);
+};
 $('startGame').onclick=()=>socket.emit('start',{room});$('hostStart').onclick=()=>socket.emit('start',{room});
 $('roll').onclick=()=>{
  if($('roll').disabled)return;
