@@ -337,27 +337,37 @@ socket.on('meetingEnd',()=>close());
   socket.on('gameCountdown',c=>{if($('startGame'))$('startGame').disabled=true;if($('hostStart'))$('hostStart').disabled=true;showCountdown(c.seconds||3).finally(()=>{if($('startGame'))$('startGame').disabled=false;if($('hostStart'))$('hostStart').disabled=false})});
  socket.on('errorMessage',m=>{$('join').disabled=false;modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close}])});
  socket.on('purchaseOffer',o=>{
-  // แสดงหน้าต่างซื้อทันทีหลังเดินถึงช่อง ไม่หน่วงเวลา และป้องกัน event ซ้ำ
+  // แสดงข้อเสนอเมื่อเดินถึงที่ดินที่ยังไม่มีเจ้าของ
   if(!o||pendingOffer?.offerId===o.offerId)return;
   pendingOffer=o;
   if(offerTimer)clearTimeout(offerTimer);
   const offer=o;
   offerTimer=setTimeout(()=>{
    if(!pendingOffer||pendingOffer.offerId!==offer.offerId)return;
-   modal('📍 คุณตกช่อง: '+offer.name,
-    'สถานที่นี้ราคา '+Number(offer.price).toLocaleString()+' บาท และหากซื้อจะเพิ่ม PM2.5 '+(offer.pollution||0)+' หน่วย ต้องการซื้อหรือไม่?',
-    [
-     {text:'ซื้อพื้นที่',fn:()=>{
-       if(!pendingOffer)return;
-       socket.emit('buy',{room});
-       pendingOffer=null;close();
-     }},
-     {text:'ไม่ซื้อ',alt:true,fn:()=>{
-       if(!pendingOffer)return;
-       socket.emit('pass',{room});
-       pendingOffer=null;close();
-     }}
-    ]);
+   const me=state?.players?.find(p=>p.id===myId);
+   const cash=Number(me?.cash||0);
+   const affordable=cash>=Number(offer.price);
+   const body='สถานที่: <b>'+offer.name+'</b><br>ราคา: <b>'+Number(offer.price).toLocaleString()+' บาท</b><br>เงินของคุณ: <b>'+cash.toLocaleString()+' บาท</b><br>หากซื้อจะเพิ่ม PM2.5 '+(offer.pollution||0)+' หน่วย'+
+    (affordable?'':'<br><br><span style="color:#ffb2a8;font-weight:800">เงินของท่านไม่เพียงพอ จึงไม่สามารถซื้อพื้นที่นี้ได้</span>');
+   const buttons=affordable?[
+    {text:'ซื้อพื้นที่',fn:()=>{
+      if(!pendingOffer)return;
+      socket.emit('buy',{room});
+      pendingOffer=null;close();
+    }},
+    {text:'ไม่ซื้อ',alt:true,fn:()=>{
+      if(!pendingOffer)return;
+      socket.emit('pass',{room});
+      pendingOffer=null;close();
+    }}
+   ]:[
+    {text:'ตกลง / เปลี่ยนตา',alt:true,fn:()=>{
+      if(!pendingOffer)return;
+      socket.emit('pass',{room});
+      pendingOffer=null;close();
+    }}
+   ];
+   modal('📍 คุณตกช่อง: '+offer.name,body,buttons);
   },350);
  });
  socket.on('purchaseResult',result=>{
@@ -409,9 +419,14 @@ function playTone(freq=440,duration=.12,type='sine',volume=.08){
  }catch(e){}
 }
 function purchaseSound(){
- // เสียงกระดิ่ง/เหรียญสั้น ๆ เมื่อซื้อที่ดินสำเร็จ
- [659.25,830.61,987.77].forEach((f,i)=>setTimeout(()=>playTone(f,.16,'triangle',.085),i*85));
- setTimeout(()=>playTone(1318.51,.22,'sine',.07),280);
+ // เสียงเหรียญและกระดิ่งเมื่อซื้อพื้นที่สำเร็จ
+ try{
+  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+ }catch(e){}
+ [659.25,830.61,987.77].forEach((f,i)=>setTimeout(()=>playTone(f,.17,'triangle',.11),i*95));
+ setTimeout(()=>playTone(1318.51,.28,'sine',.10),300);
+ setTimeout(()=>playTone(1567.98,.18,'triangle',.07),420);
 }
 function diceSound(){
  [520,390,620,470,740,560].forEach((f,i)=>setTimeout(()=>playTone(f,.075,'square',.035),i*65));

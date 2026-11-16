@@ -66,7 +66,15 @@ function land(r,p){
  if(i===30){p.pos=10;msg(r,p.name+' ถูกส่งไปพักที่สถานี');return}
  if(!price)return;
  if(r.owners[i]===undefined){r.pending={player:p.id,index:i,name,price,pollution:pollutionFor(i)};return}
- if(r.owners[i]!==p.id){const owner=r.players.find(x=>x.id===r.owners[i]);if(owner){const damage=Math.ceil(price/2);charge(r,p,damage,'ค่าเสียหาย 50% ของราคาพื้นที่ '+name);if(p.cash>0)credit(r,owner,damage,'ค่าชดเชยพื้นที่')}}
+ if(r.owners[i]!==p.id){
+  const owner=r.players.find(x=>x.id===r.owners[i]);
+  if(owner){
+   const damage=Math.ceil(price/2);
+   const paid=Math.min(p.cash,damage);
+   if(paid>0){p.cash-=paid;owner.cash+=paid;msg(r,`${p.name} จ่ายค่าเสียหาย ${paid} บาท (50% ของราคาพื้นที่ ${name}) ให้ ${owner.name}`)}
+   else msg(r,`${p.name} ไม่มีเงินจ่ายค่าเสียหายพื้นที่ ${name}`);
+  }
+ }
 }
 io.on('connection',s=>{
  s.on('create',({name,pawn})=>{
