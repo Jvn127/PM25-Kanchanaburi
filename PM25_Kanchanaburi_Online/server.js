@@ -108,7 +108,7 @@ function land(r,p){
  if(r.owners[i]!==p.id){
   const owner=r.players.find(x=>x.id===r.owners[i]);
   if(owner){
-   r.pending={player:p.id,index:i,name,price:Math.ceil(price*1.3),basePrice:price,pollution:0,type:'buyout',ownerId:owner.id,ownerName:owner.name};
+   r.pending={player:p.id,index:i,name,price:Math.ceil(price*1.3),basePrice:price,pollution:pollutionFor(i),type:'buyout',ownerId:owner.id,ownerName:owner.name};
    msg(r,`${p.name} มีโอกาสซื้อแย่ง ${owner.name} ในราคาเพิ่ม 30%`);
   }
  }
@@ -181,8 +181,10 @@ io.on('connection',s=>{
    const previousOwner=r.players.find(x=>x.id===pending.ownerId);
    if(previousOwner){previousOwner.cash+=price;previousOwner.assets=previousOwner.assets.filter(x=>x!==i);}
    r.owners[i]=p.id;if(!p.assets.includes(i))p.assets.push(i);
-   msg(r,`${p.name} ซื้อแย่ง ${places[i][0]} จาก ${pending.ownerName} ในราคา ${price.toLocaleString()} บาท (เพิ่ม 30% จากราคาเดิม)`);
-   s.emit('purchaseResult',{success:true,name:places[i][0],buyout:true,price});
+   const addedPollution=pollutionFor(i);
+   r.pm25+=addedPollution;
+   msg(r,`${p.name} ซื้อแย่ง ${places[i][0]} จาก ${pending.ownerName} ในราคา ${price.toLocaleString()} บาท (เพิ่ม 30% จากราคาเดิม) และเพิ่ม PM2.5 ${addedPollution} หน่วย`);
+   s.emit('purchaseResult',{success:true,name:places[i][0],buyout:true,price,pollution:addedPollution});
   }else{
    p.assets.push(i);r.owners[i]=p.id;r.pm25+=pollutionFor(i);
    msg(r,`${p.name} ซื้อ ${places[i][0]} และเพิ่ม PM2.5 ${pollutionFor(i)} หน่วย`);

@@ -422,7 +422,7 @@ socket.on('meetingEnd',()=>close());
   const cash=Number(o.cash??me?.cash??0);
   const affordable=cash>=Number(o.price);
   const isBuyout=o.type==='buyout';
-  const body='สถานที่: <b>'+o.name+'</b><br>'+(isBuyout?'เจ้าของปัจจุบัน: <b>'+o.ownerName+'</b><br>ราคาซื้อแย่ง (เพิ่ม 30%): ':'ราคา: ')+ '<b>'+Number(o.price).toLocaleString()+' บาท</b><br>เงินของคุณ: <b>'+cash.toLocaleString()+' บาท</b>'+(isBuyout?'<br>เงินจะโอนให้เจ้าของเดิม':'<br>หากซื้อจะเพิ่ม PM2.5 '+(o.pollution||0)+' หน่วย')+
+  const body='สถานที่: <b>'+o.name+'</b><br>'+(isBuyout?'เจ้าของปัจจุบัน: <b>'+o.ownerName+'</b><br>ราคาซื้อแย่ง (เพิ่ม 30%): ':'ราคา: ')+ '<b>'+Number(o.price).toLocaleString()+' บาท</b><br>เงินของคุณ: <b>'+cash.toLocaleString()+' บาท</b>'+(isBuyout?'<br>เงินจะโอนให้เจ้าของเดิม<br>เมื่อซื้อจะเพิ่ม PM2.5 '+(o.pollution||0)+' หน่วย':'<br>หากซื้อจะเพิ่ม PM2.5 '+(o.pollution||0)+' หน่วย')+
    (affordable?'':'<br><br><span style="color:#ffb2a8;font-weight:800">เงินของท่านไม่เพียงพอ จึงไม่สามารถซื้อพื้นที่นี้ได้</span>');
   const buttons=affordable?[
    {text:'ซื้อพื้นที่',fn:()=>{if(!pendingOffer)return;socket.emit('buy',{room});pendingOffer=null;close();}},
