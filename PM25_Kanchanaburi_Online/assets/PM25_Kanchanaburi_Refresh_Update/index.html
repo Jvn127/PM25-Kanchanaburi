@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PM2.5 KANCHANABURI — Pixel Adventure</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Prompt:wght@400;500;600;700;800&display=swap');
+:root{--gold:#ffe16b;--ink:#15364a;--panel:#123d50ee;--line:#65d6c5;--red:#ff6b6b;--blue:#43bde8;--green:#62d68b;--yellow:#ffd447}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#123d50;color:#fffdf2;font-family:Prompt,system-ui,sans-serif}
+body{min-height:100vh;background:linear-gradient(#08232c55,#08232c99),url('background-kanchanaburi.png') center/cover fixed;overflow-x:hidden}
+button,input{font:inherit}
+button{cursor:pointer}
+.topbar{height:64px;display:flex;align-items:center;justify-content:space-between;padding:8px 22px;background:#092329ee;border-bottom:3px solid #b79b5d;position:relative;z-index:3}
+h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin:0;text-shadow:3px 3px #573e28;line-height:1.5}
+.tag{font-size:10px;letter-spacing:2px;color:#d4e7d8}
+.status{font-size:11px;color:#b8d9c8}
+#game{display:none;min-height:calc(100vh - 64px);padding:10px 18px 14px;max-width:1700px;margin:auto}
+.playerbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 auto 10px;max-width:1380px}
+.player{min-height:104px;display:flex;align-items:center;gap:13px;padding:11px 13px;background:#102b30ed;border:2px solid var(--player-color,#6d8e7b);box-shadow:3px 3px #06191c;opacity:.68;position:relative}
+.player.me{opacity:1;background:#173f37;border-width:3px;box-shadow:0 0 0 3px #f4d36d,0 0 18px #f4d36d88,3px 3px #06191c}.player.active{opacity:1;border-color:#ffe27b;box-shadow:0 0 0 2px #9d7a39,3px 3px #06191c}
+.player.empty{border-style:dashed;opacity:.55}
+.avatar{width:66px;height:78px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(2px 2px 0 #132b2a);flex:none}
+.pname{font-weight:900;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pmoney{font-weight:900;color:#ffe39a;font-size:21px;line-height:1.25}
+.pmeta{font-size:13px;color:#d6e8df;font-weight:700}
+.board-stage{display:flex;justify-content:center;align-items:center;gap:14px}
+#board{width:min(90vw,1180px);aspect-ratio:1.12;display:grid;grid-template-columns:repeat(11,minmax(0,1fr));grid-template-rows:repeat(11,minmax(0,1fr));gap:3px;padding:8px;background:#146b68;border:5px solid #ffd447;box-shadow:inset 0 0 0 4px #476c58,7px 7px 0 #06191c;image-rendering:pixelated;position:relative}
+.tile{min-width:0;min-height:0;position:relative;background:#fffef4;color:#102b3a;border:3px solid #8bded0;box-shadow:0 2px 0 #263f36;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:3px 2px;overflow:hidden}
+.tile .stripe{height:7px;width:100%;position:absolute;top:0;left:0}
+.tile strong{font-size:clamp(11px,1.12vw,18px);line-height:1.25;margin-top:7px;overflow-wrap:anywhere;font-weight:900;text-shadow:0 1px #fff}
+.tile small{font-size:clamp(9px,.88vw,14px);font-weight:900;margin-top:3px;color:#183c4a}
+.tile .owner{font-size:clamp(8px,.72vw,12px);font-weight:800;overflow:hidden;max-width:100%;white-space:nowrap}
+.tile.current{outline:3px solid #ffe57c;outline-offset:-3px;filter:brightness(1.12);z-index:1}
+.tokens{display:flex;position:absolute;bottom:0;right:0;gap:0}
+.token{width:clamp(14px,1.8vw,26px);height:clamp(20px,2.5vw,34px);object-fit:contain;image-rendering:pixelated}
+.center{grid-column:2/11;grid-row:2/11;background:radial-gradient(ellipse at 50% 55%,#4d9287 0,#286052 45%,#1b483e 75%);border:4px solid #b5a16a;box-shadow:inset 0 0 0 4px #6e9975;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:12px;position:relative;overflow:hidden}
+.center:before,.center:after{content:"";position:absolute;width:120px;height:120px;border-radius:50%;background:#8cc36b22;filter:blur(2px)}
+.center:before{left:-40px;top:15px}.center:after{right:-40px;bottom:10px}
+.center .title{font:clamp(12px,1.5vw,20px) 'Press Start 2P',monospace;color:var(--gold);line-height:1.8;text-shadow:3px 3px #17352d}
+.center .landmarks{font-size:clamp(24px,4vw,48px);margin:10px}
+.center .mission{font-weight:800;font-size:clamp(10px,1vw,14px)}
+.center .hint{font-size:11px;color:#d6ead7;margin-top:6px}
+.center button{margin-top:12px}
+.bottom-bar{max-width:1380px;margin:10px auto 0;display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.panel{background:#102b30ed;border:2px solid var(--line);padding:9px 12px;box-shadow:3px 3px #06191c}
+.dice{display:flex;justify-content:center;gap:10px}
+.die{width:60px;height:60px;background:linear-gradient(145deg,#fff,#e9e6df);color:#171717;border-radius:13px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:8px;gap:2px;box-shadow:inset -3px -4px 7px #bdbab3,0 5px 0 #aaa69c,0 8px 12px #06191c88;border:1px solid #d0ccc4;transform:rotate(-5deg)}
+.die:nth-child(2){transform:rotate(5deg)}
+.die .pip{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#555,#050505 65%);align-self:center;justify-self:center;box-shadow:inset 0 1px 2px #ffffff55}
+.die.rolling{animation:diceTumble .42s linear infinite;filter:drop-shadow(0 0 7px #ffe39a);}
+.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{background:var(--gold);color:#302719;padding:10px 16px;border:0;border-bottom:4px solid #98743b;font-weight:800}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.alt{background:#31575a;color:white;border:1px solid #82a393;padding:9px 13px;font-weight:700}
+.log{font-size:10px;color:#d2e3d8;max-height:48px;overflow:auto;line-height:1.5}
+.roomtag{font-size:11px;color:#ffe49a;text-align:right}.timer{font:clamp(18px,2vw,27px) 'Press Start 2P',monospace;color:#ffe39a;text-align:center;margin:4px 0 8px;text-shadow:2px 2px #533}.pawn-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.pawn-choice{min-width:0;background:#24484a;color:#f7f1d9;border:2px solid #789d8d;border-radius:8px;padding:7px 4px;font-weight:800;display:flex;flex-direction:column;align-items:center;gap:5px}
+.pawn-choice img{width:100%;height:78px;object-fit:contain;image-rendering:pixelated}
+.pawn-choice.image-fallback:before{display:block;font-size:48px;line-height:78px}
+.pawn-choice[data-pawn="helmet"].image-fallback:before{content:'⛑️'}
+.pawn-choice[data-pawn="flask"].image-fallback:before{content:'🧪'}
+.pawn-choice[data-pawn="recycle"].image-fallback:before{content:'♻️'}
+.pawn-choice[data-pawn="pm25"].image-fallback:before{content:'🌫️'}
+.pawn-choice.selected{border:3px solid #ffe27b;background:#496b55;box-shadow:0 0 0 2px #9d7a39}
+.pawn-choice.taken{opacity:.3;filter:grayscale(1);cursor:not-allowed;text-decoration:line-through}
+.pawn-choice small{font-size:10px;color:#ffe7a6}
+@media(max-width:520px){.pawn-choice img{height:56px}.pawn-grid{gap:4px}}.lobby-fields{display:grid;gap:8px;margin:12px 0}.lobby-fields input{width:100%;padding:12px;background:#e8e2c7;color:#182e2b;border:2px solid #9d9a6c}
+#lobby{position:fixed;inset:64px 0 0;z-index:5;display:flex;align-items:center;justify-content:center;padding:18px;background:linear-gradient(#09252b77,#09252bd9),url('background-kanchanaburi.png') center/cover}
+.lobby-card{width:min(560px,95vw);padding:clamp(20px,4vw,38px);background:#102b30ed;border:3px solid #d0b36d;box-shadow:9px 9px #06191c;text-align:center}
+.lobby-title{font:clamp(17px,3vw,29px) 'Press Start 2P',monospace;color:var(--gold);line-height:1.8;text-shadow:3px 3px #573e28}
+.lobby-sub{letter-spacing:2px;font-size:11px;color:#d4e7d8;margin:8px 0 18px}
+.big-play{font:20px 'Press Start 2P',monospace;min-width:220px;padding:19px 28px;margin:14px auto;background:var(--gold);color:#302719;border:0;border-bottom:7px solid #98743b;box-shadow:0 0 0 4px #f5d27a44}
+.room-options{display:none;margin-top:15px}
+.room-options input{width:100%;padding:12px;background:#e8e2c7;color:#182e2b;border:2px solid #9d9a6c;margin:8px 0}
+.option-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#music{position:fixed;right:16px;bottom:14px;z-index:8;background:#102b30ed;color:#ffe39a;border:1px solid #b79b5d;padding:8px 12px}
+.modal{position:fixed;inset:0;background:#061719df;display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+.dialog{width:min(440px,100%);background:#173b3e;border:3px solid var(--gold);padding:18px;box-shadow:8px 8px #061719}
+.dialog.meeting-dialog{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#102b30;border-color:#f5d27a}
+.meeting-art{display:block;width:100%;max-height:300px;object-fit:cover;border:2px solid #f5d27a;margin:0 0 14px}
+.meeting-alert{font-size:clamp(18px,3vw,26px);font-weight:900;color:#ffe39a;text-align:center;margin:8px 0}
+.meeting-copy{text-align:center;line-height:1.65}
+.dialog h2{color:var(--gold);margin-top:0}.dialog button{margin:5px}
+.dialog.winner-dialog{
+ width:min(900px,96vw);max-height:94vh;overflow:auto;
+ background:linear-gradient(#062f30d9,#063b35e8),url('assets/winner-background.png') center/cover;
+ border:4px solid #f5c24d;box-shadow:0 0 0 5px #6b4518,0 16px 45px #000b;
+ text-align:center;
+}
+.winner-crown{font-size:clamp(34px,7vw,64px);line-height:1.1;margin:0 0 6px}
+.winner-title{font-size:clamp(22px,4vw,38px);color:#ffe08a;text-shadow:3px 3px #613b0b;margin:4px 0 12px}
+.winner-table{width:100%;border-collapse:collapse;background:#062c2ddd;color:#fff;margin:12px 0;font-size:clamp(12px,2vw,16px)}
+.tile-pm{display:block;color:#287b58;font-weight:900;font-size:10px;margin-top:2px}.winner-table th,.winner-table td{border:1px solid #e9c56a;padding:9px 7px;text-align:center}
+.winner-table th{background:#94631d;color:#fff2c7}
+/* แถบอันดับใช้สีแยกชัดเจน: ทอง / เงิน / ทองแดง / ปกติ */
+.winner-table tbody tr{transition:filter .18s ease,transform .18s ease}
+.winner-table tbody tr.rank-1{background:linear-gradient(90deg,#f5c542,#ffe994 48%,#e9ae27);color:#392400;font-weight:1000;text-shadow:0 1px #fff5c5}
+.winner-table tbody tr.rank-1 td{border-color:#fff0a1;border-top:2px solid #fff0a1;border-bottom:2px solid #c78a12}
+.winner-table tbody tr.rank-2{background:linear-gradient(90deg,#89959e,#e5ebef 48%,#aeb9c1);color:#1e2b33;font-weight:900}
+.winner-table tbody tr.rank-2 td{border-color:#f5f8fa}
+.winner-table tbody tr.rank-3{background:linear-gradient(90deg,#9b5429,#d9955c 48%,#b96b36);color:#fff8ed;font-weight:900}
+.winner-table tbody tr.rank-3 td{border-color:#f3c49b}
+.winner-table tbody tr.rank-4{background:#073a38dd;color:#e8f5ef;font-weight:700}
+.winner-table tbody tr.champion-row{outline:4px solid #fff7bd;outline-offset:-4px;box-shadow:inset 0 0 0 2px #f6c542}
+.winner-table .champion-tag{display:inline-block;margin:3px 0 0 5px;padding:3px 8px;border:1px solid #fff0a1;border-radius:99px;background:#fff2b8;color:#573600;font-size:.82em;font-weight:1000;white-space:nowrap;text-shadow:none}
+.winner-champion-banner{margin:10px auto 14px;padding:12px 16px;width:min(660px,100%);border:3px solid #fff0a1;border-radius:12px;background:linear-gradient(120deg,#7b4b08,#f5c542 35%,#ffeaa0 52%,#d99a20 78%,#704208);color:#392300;box-shadow:0 0 0 4px #8b5a16,0 7px 22px #0009,inset 0 0 16px #fff8b0;text-shadow:0 1px #fff5c6}
+.winner-champion-label{font-size:clamp(13px,2vw,18px);font-weight:1000;letter-spacing:2px}
+.winner-champion-name{font-size:clamp(25px,4.2vw,42px);font-weight:1000;line-height:1.25;margin-top:4px}
+.winner-rank-legend{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:7px 0 2px;font-size:12px;font-weight:900}
+.winner-rank-legend span{padding:4px 9px;border-radius:6px;border:1px solid #ffffff66}
+.winner-rank-legend .gold{background:#f5c542;color:#392400}.winner-rank-legend .silver{background:#cbd3d9;color:#1e2b33}.winner-rank-legend .bronze{background:#b96b36;color:#fff}.winner-rank-legend .normal{background:#073a38;color:#e8f5ef}
+@media(max-width:600px){.winner-table th,.winner-table td{padding:7px 4px}.winner-table .champion-tag{display:block;width:max-content;margin:4px auto 0}.winner-champion-banner{padding:9px}}
+.rules-copy{text-align:left;line-height:1.7}
+.dialog.rules-dialog{
+ width:min(620px,92vw);
+ max-height:min(78vh,680px);
+ overflow:hidden;
+ display:flex;
+ flex-direction:column;
+ padding:clamp(12px,2.5vw,20px);
+ border-radius:12px;
+}
+.rules-dialog h2{font-size:clamp(16px,2.3vw,22px);margin:0 38px 10px 0;line-height:1.3}
+.rules-dialog .modal-body{overflow-y:auto;overscroll-behavior:contain;padding:0 8px 8px 0;min-height:0}
+.rules-dialog .rules-copy{font-size:clamp(12px,1.6vw,14px);line-height:1.55}
+.rules-dialog .rules-copy h3{font-size:clamp(13px,1.8vw,16px);margin:10px 0 3px}
+.rules-dialog #modalButtons{padding-top:8px;border-top:1px solid #6f8b7d;text-align:right}
+.rules-close-x{
+ position:absolute;right:12px;top:10px;width:34px;height:34px;
+ border:1px solid #f5d27a;border-radius:8px;background:#254b4b;color:#fff;
+ font-size:22px;line-height:1;cursor:pointer
+}
+
+.rules-copy h3{color:#ffe39a;margin:12px 0 4px}
+
+
+#countdownNotice{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:#061719dd;color:#ffe39a;font:clamp(64px,16vw,150px) 'Press Start 2P',monospace;text-shadow:6px 6px #573e28}
+#turnNotice{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:#071a1dcc;pointer-events:none}
+#turnNotice span{background:#173b3e;border:3px solid var(--gold);padding:22px 30px;color:#ffe39a;font-size:clamp(20px,4vw,34px);font-weight:800;box-shadow:8px 8px #061719}
+@media(max-width:800px){#game{padding:8px}.playerbar{grid-template-columns:repeat(2,minmax(0,1fr))}#board{width:96vw;aspect-ratio:1.05;}.bottom-bar{grid-template-columns:1fr}.roomtag{text-align:center}.log{max-height:65px}}
+@media(max-width:480px){.topbar{height:auto;min-height:60px;padding:8px 12px}.tag{font-size:8px}.player{min-height:60px;padding:5px}.avatar{width:36px;height:45px}.pname{font-size:11px}.pmoney{font-size:12px}.pmeta{font-size:9px}.tile{padding:1px}.tile .stripe{height:4px}.tile strong{font-size:9px}.tile small{font-size:8px}.center .hint{font-size:9px}.bottom-bar{margin-top:7px}}
+
+.die.rolling{animation:diceTumble .42s linear infinite;filter:drop-shadow(0 0 7px #ffe39a);}
+@keyframes diceTumble{0%{transform:translateY(0) rotate(0) scale(1)}25%{transform:translateY(-13px) rotate(95deg) scale(1.12)}50%{transform:translateY(0) rotate(190deg) scale(.96)}75%{transform:translateY(-7px) rotate(275deg) scale(1.08)}100%{transform:translateY(0) rotate(360deg) scale(1)}}
+.token.walking{animation:tokenWalk .18s ease-in-out infinite alternate;filter:drop-shadow(0 0 5px #ffe27b)}
+@keyframes tokenWalk{from{transform:translateY(0) scaleX(.94)}to{transform:translateY(-5px) scaleX(1.05)}}
+.tile.current{animation:tilePulse .65s ease-in-out 2}
+@keyframes tilePulse{50%{filter:brightness(1.3);box-shadow:0 0 0 3px #ffe27b}}
+@media(prefers-reduced-motion:reduce){.die.rolling,.token.walking,.tile.current{animation:none}}
+@keyframes championBurst{0%{opacity:1;transform:translate(-50%,-50%) scale(.2) rotate(0)}100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),calc(-50% + var(--dy,0px))) scale(1) rotate(720deg)}}
+.player{background:#123d50f2;border-color:var(--player-color,#65d6c5)}.panel{background:#123d50f2;border-color:#65d6c5}.btn{background:linear-gradient(135deg,#ffe16b,#ffb84d);color:#17364a}.alt{background:#167d82;border-color:#7de5d6}
+</style>
+</head>
+<body>
+<header class="topbar">
+ <div><h1>PM2.5 KANCHANABURI</h1><div class="tag">PIXEL ENVIRONMENTAL ENGINEER ADVENTURE</div></div>
+ <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+   <div id="roomBadge" style="display:none;background:#f5d27a;color:#302719;border:2px solid #fff0bf;padding:7px 12px;font-weight:900;border-radius:8px;letter-spacing:1px">ROOM —</div>
+   <button id="hostStart" class="btn" title="เจ้าของห้องเริ่มเกม" style="display:none;padding:8px 14px;min-width:116px">▶ เริ่มเกม</button>
+   <div id="connection" class="status">● กำลังเชื่อมต่อ...</div>
+  </div>
+</header>
+
+<section id="lobby">
+ <div class="lobby-card">
+  <div class="lobby-title">KANCHANABURI<br>ADVENTURE</div>
+  <div class="lobby-sub">🌿 EXPLORE • BUILD • PROTECT NATURE 🌿</div>
+  <div style="font-size:42px;margin:10px">🌉 🌲 🏞️ 🚂</div>
+  <button id="playBtn" class="big-play">▶ PLAY</button>
+  <div id="roomOptions" class="room-options">
+    <div class="lobby-fields">
+      <input id="playerName" maxlength="20" placeholder="ชื่อผู้เล่น">
+      <div style="font-weight:800;color:#ffe39a">เลือกตัวหมากประจำตัว (ห้ามเลือกซ้ำ)</div>
+      <div id="pawnGrid" class="pawn-grid">
+        <button type="button" class="pawn-choice" data-pawn="helmet"><img src="assets/pawn-helmet.png" alt="หมวกวิศวกร"><span>หมวกวิศวกร</span></button>
+        <button type="button" class="pawn-choice" data-pawn="flask"><img src="assets/pawn-flask.png" alt="ขวดเก็บตัวอย่าง"><span>ขวดตัวอย่าง</span></button>
+        <button type="button" class="pawn-choice" data-pawn="recycle"><img src="assets/pawn-recycle.png" alt="รีไซเคิล"><span>รีไซเคิล</span></button>
+        <button type="button" class="pawn-choice" data-pawn="pm25"><img src="assets/pawn-pm25.png" alt="PM2.5"><span>PM2.5</span></button>
+      </div>
+      <div id="pawnHint" class="hint">เลือกตัวหมาก 1 แบบก่อนสร้างหรือเข้าร่วมห้อง</div>
+      <button type="button" id="rulesBtn" class="alt" style="width:100%;margin-top:10px">📖 อ่านกติกาและวิธีชนะ</button>
+    </div>
+   <div class="option-row"><button id="create" class="btn">＋ สร้างห้องใหม่</button><button id="showJoin" class="alt">เข้าร่วมห้อง</button></div>
+   <div id="joinBox" style="display:none"><input id="code" placeholder="กรอกรหัสห้อง เช่น A1B2C3"><button id="join" class="btn" style="width:100%">เข้าร่วมเกม</button></div>
+   <div class="hint" style="margin-top:12px;color:#d5e4d8;font-size:11px">เล่นออนไลน์ได้สูงสุด 4 คน • ชวนเพื่อนด้วยรหัสห้อง</div>
+  </div>
+ </div>
+</section>
+
+<main id="game">
+ <div class="timer" id="timer">00:00</div>
+  <div id="pm25" class="panel" style="max-width:420px;margin:0 auto 10px;text-align:center;font-weight:800;color:#b9f1d0">🌫️ PM2.5 สะสม: 0 หน่วย</div>
+  <div class="playerbar" id="players"></div>
+ <div class="board-stage">
+  <div id="board">
+   <div class="center">
+    <div class="title">KANCHANABURI</div>
+    <div class="landmarks">🌉 🌲 🏞️</div>
+    <div class="mission">PM2.5 ENVIRONMENTAL MISSION</div>
+    <div class="hint">สำรวจจังหวัด • ซื้อสถานที่ • ปกป้องธรรมชาติ</div>
+    <button id="startGame" class="btn" style="display:none">เริ่มเกม</button>
+   </div>
+  </div>
+ </div>
+ <div class="bottom-bar">
+  <div class="panel"><div class="roomtag" id="roomLabel">ROOM —</div><div class="log" id="log">ยินดีต้อนรับสู่การผจญภัยกาญจนบุรี!</div></div>
+  <div class="panel"><div class="dice"><div class="die" id="d1" data-value="1" aria-label="ลูกเต๋า 1"></div><div class="die" id="d2" data-value="1" aria-label="ลูกเต๋า 1"></div></div><div id="diceResult" style="text-align:center;font-weight:900;font-size:18px;color:#ffe16b;min-height:28px;margin-top:5px" aria-live="polite">ทอยลูกเต๋าเพื่อเริ่มเดิน</div><div class="controls" style="margin-top:8px"><button class="btn" id="roll" disabled>🎲 ทอยลูกเต๋า</button><button class="alt" id="assets">ทรัพย์สิน</button></div></div>
+  <div class="panel" style="text-align:center"><div id="status" style="font-weight:800;color:#ffe39a">รอผู้เล่นเข้าร่วมห้อง</div><div class="hint" id="share"></div></div>
+ </div>
+</main>
+<button id="music" title="เปิด/ปิดเพลงประกอบ">♫ เพลง: ปิด</button>
+<div class="modal" id="modal"><div class="dialog" id="dialog"></div></div>
+<div id="turnNotice"><span id="turnNoticeText"></span></div><div id="countdownNotice">3</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+let socket=null,state=null,myId=null,room=null,audioCtx=null,musicTimer=null,musicOn=false,noteIndex=0;
+const pawnInfo={
+ helmet:{name:'1',color:'#8f3f55',image:'assets/pawn-helmet.png'},
+ flask:{name:'2',color:'#55a9ed',image:'assets/pawn-flask.png'},
+ recycle:{name:'3',color:'#65cb86',image:'assets/pawn-recycle.png'},
+ pm25:{name:'4',color:'#f08a32',image:'assets/pawn-pm25.png'}
+};
+const colors=['#8f3f55','#55a9ed','#65cb86','#f08a32'];
+
+let selectedPawn=null,availablePawns=['helmet','flask','recycle','pm25'],joinChecked=false,joinCodeChecked='',timerInterval=null,displayedPositions=new Map(),pendingOffer=null,offerTimer=null,moveLock=false,musicStepIndex=0,displayedDice=null;
+const places=[
+['จุดเริ่มต้น',0],['สะพานข้ามแม่น้ำแคว',60],['กองกลาง',0],['สุสานทหารสัมพันธมิตร',60],['ค่าธรรมเนียมอุทยาน',100],['รถไฟสายมรณะ',200],['พิพิธภัณฑ์ช่องเขาขาด',100],['โอกาส',0],['น้ำตกไทรโยคน้อย',100],['น้ำตกเอราวัณ',120],['พักสถานี',0],['เขื่อนศรีนครินทร์',140],['กิจกรรมล่องแพ',150],['ถ้ำกระแซ',140],['เมืองมัลลิกา',160],['รถไฟสายมรณะ',200],['วัดถ้ำเสือ',180],['กองกลาง',0],['ต้นจามจุรียักษ์',180],['วัดเมตตาธรรมโพธิญาณ',200],['จุดชมวิว',0],['น้ำตกห้วยแม่ขมิ้น',220],['โอกาส',0],['เขื่อนวชิราลงกรณ',220],['ปิล๊อก–บ้านอีต่อง',240],['รถไฟสายมรณะ',200],['เหมืองปิล็อก',260],['ล่องแพแม่น้ำแคว',150],['สะพานมอญ',260],['เจดีย์พุทธคยา',280],['ไปสถานีพัก',0],['น้ำพุร้อนหินดาด',300],['อุทยานทองผาภูมิ',300],['กองกลาง',0],['อุทยานไทรโยค',320],['รถไฟสายมรณะ',200],['เขาช้างเผือก',350],['โอกาส',0],['อุทยานแห่งชาติเอราวัณ',400],['ภาษีท่องเที่ยว',100]];
+const pos=[];for(let i=0;i<=10;i++)pos.push([10-i,10]);for(let i=1;i<=10;i++)pos.push([0,10-i]);for(let i=1;i<=10;i++)pos.push([i,0]);for(let i=1;i<=9;i++)pos.push([10,i]);
+const tileColors=['#86b77b','#77b8c5','#c99a82','#d5bd68','#8eb5a0'];
+function spriteUrl(p){return pawnInfo[p.pawn]?.image||pawnInfo.helmet.image}
+function renderPawnChoices(taken=[]){
+ const takenSet=new Set(taken);
+ document.querySelectorAll('.pawn-choice').forEach(btn=>{
+  const id=btn.dataset.pawn,blocked=takenSet.has(id);
+  btn.classList.toggle('taken',blocked);btn.classList.toggle('selected',selectedPawn===id);
+  btn.disabled=blocked;
+  const label=btn.querySelector('span');
+  if(label)label.textContent=pawnInfo[id].name+(blocked?' · ถูกเลือกแล้ว':'');
+ });
+ $('pawnHint').textContent=selectedPawn
+  ? 'เลือกแล้ว: '+pawnInfo[selectedPawn].name
+  : 'กรุณาเลือกตัวหมากที่ยังว่าง 1 แบบ';
+}
+function drawDie(id,value){
+ const patterns={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+ const el=$(id);if(!el)return;el.dataset.value=value;
+ el.innerHTML=Array.from({length:9},(_,i)=>`<span class="${(patterns[value]||patterns[1]).includes(i)?'pip':''}"></span>`).join('');
+ el.setAttribute('aria-label','ลูกเต๋า '+value);
+}
+function formatTime(sec){sec=Math.max(0,Math.min(1200,sec|0));return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}
+function updateTimer(){const elapsed=state?.elapsedSeconds||0;$('timer').textContent=formatTime(elapsed);$('pm25').textContent='🌫️ PM2.5 สะสม: '+(state?.pm25??0)+' หน่วย'}
+function startTimer(){if(timerInterval)clearInterval(timerInterval);updateTimer();timerInterval=setInterval(updateTimer,1000)}
+function log(s){$('log').innerHTML=s+'<br>'+$('log').innerHTML}
+function modal(title,body,buttons){
+ const dialog=$('dialog');
+ const isRules=String(title).includes('กติกาเกม');
+ dialog.classList.toggle('winner-dialog',String(title).includes('จบเกม'));
+ dialog.classList.toggle('meeting-dialog',String(title).includes('ประชุม'));
+ dialog.classList.toggle('rules-dialog',isRules);
+ dialog.innerHTML='<h2>'+title+'</h2><div class="modal-body">'+body+'</div><div id="modalButtons"></div>'+
+  (isRules?'<button type="button" class="rules-close-x" aria-label="ปิดกติกา" title="ปิดกติกา" onclick="close()">×</button>':'');
+ buttons.forEach(b=>{let x=document.createElement('button');x.className=b.alt?'alt':'btn';x.textContent=b.text;x.disabled=!!b.disabled;if(b.title)x.title=b.title;if(b.disabled)x.setAttribute('aria-disabled','true');x.onclick=b.fn;$('modalButtons').appendChild(x)});
+ $('modal').style.display='flex';
+}
+function close(){
+ $('modal').style.display='none';
+ $('dialog').classList.remove('rules-dialog');
+}
+function submitMeetingAnswer(answer){
+ const meeting=state?.meeting;
+ if(!meeting||!socket)return;
+ const player=state?.players.find(x=>x.id===myId);
+ const cash=Number(player?.cash)||0;
+ if(answer==='confirm'&&cash<300){
+  modal('เงินไม่เพียงพอ', '<div class=\"meeting-copy\">การยืนยันมาตรการต้องใช้เงิน 300 บาท<br>ขณะนี้คุณมีเงิน '+cash.toLocaleString()+' บาท จึงยังยืนยันไม่ได้</div>', [{text:'กลับไปที่ประชุม',fn:()=>showMeeting(state?.meeting||meeting)}]);
+  $('dialog').classList.add('meeting-dialog');
+  return;
+ }
+ socket.emit('meetingAnswer',{room,answer});
+ modal('กำลังบันทึกคำตอบ', '<div class=\"meeting-copy\">กำลังส่งคำตอบไปตรวจสอบกับระบบเกม กรุณารอสักครู่</div>', [{text:'รอระบบ',disabled:true,fn:()=>{}}]);
+ $('dialog').classList.add('meeting-dialog');
+}
+function showMeeting(meeting){$('modal').dataset.meetingShown='1';
+ if(!meeting)return;
+ const answered=meeting.answers?.[myId];
+ const p=state?.players.find(x=>x.id===myId);
+ const cash=Number(p?.cash)||0;
+ const canPay=cash>=300;
+ const forced=!!meeting.forced;
+ const art='<img class=\"meeting-art\" src=\"assets/meeting-room-pm25.png\" alt=\"ห้องประชุมติดตามค่า PM2.5\">';
+ if(answered){
+  modal('🗣️ ประชุมติดตามค่า PM2.5 รอบที่ '+meeting.number,
+   art+'<div class=\"meeting-alert\">PM2.5 ถึง '+meeting.threshold+' หน่วยแล้ว</div><div class=\"meeting-copy\">คุณตอบแล้ว: '+(answered==='confirm'?'ยืนยัน':answered==='unable'?'เงินไม่เพียงพอ':'ปฏิเสธ')+'<br>รอผู้เล่นคนอื่นตอบครบทุกคน</div>',
+   [{text:'รอผู้เล่น',disabled:true,fn:()=>{}}]);
+ }else{
+  const affordability=canPay
+   ? '<br><br>ยอดเงินของคุณ '+cash.toLocaleString()+' บาท เพียงพอสำหรับมาตรการ'
+   : '<br><br><b style=\"color:#ffcf91\">เงินของคุณมี '+cash.toLocaleString()+' บาท ซึ่งไม่ถึง 300 บาท จึงไม่สามารถยืนยันมาตรการได้</b>';
+  const explanation=forced
+   ? '<b>รอบบังคับยืนยัน:</b> ผู้ที่มีเงินตั้งแต่ 300 บาทขึ้นไปจึงจะยืนยันได้ ผู้ที่เงินไม่พอให้แจ้งสถานะว่าไม่สามารถร่วมจ่ายได้'
+   : '<b>ยืนยัน:</b> จ่าย 300 บาท ได้เครดิต +10<br><b>ปฏิเสธ:</b> ไม่เสียเงินและไม่ได้เครดิตเพิ่ม<br>หากไม่มีใครยืนยัน ค่า PM2.5 จะคงเดิม และจะประชุมบังคับอีกครั้งเมื่อถึง 60';
+  const confirmButton={
+   text:canPay?(forced?'ยืนยันมาตรการ (บังคับ)':'ยืนยันมาตรการ'):'ยืนยันมาตรการไม่ได้ (เงินไม่ถึง 300 บาท)',
+   disabled:!canPay,
+   title:canPay?'จ่าย 300 บาทเพื่อรับเครดิต +10':'ต้องมีเงินอย่างน้อย 300 บาท จึงจะยืนยันได้',
+   fn:()=>submitMeetingAnswer('confirm')
+  };
+  const buttons=forced
+   ? [
+      confirmButton,
+      ...(!canPay?[{text:'บันทึกว่าเงินไม่เพียงพอ',alt:true,fn:()=>submitMeetingAnswer('unable')}]:[])
+     ]
+   : [
+      confirmButton,
+      {text:'ปฏิเสธ',alt:true,fn:()=>submitMeetingAnswer('reject')}
+     ];
+  modal(forced?'🚨 ประชุมบังคับยืนยันมาตรการ':'⚠️ PM2.5 ถึงเกณฑ์แล้ว',
+   art+'<div class=\"meeting-alert\">PM2.5 ถึง '+meeting.threshold+' หน่วยแล้ว</div><div class=\"meeting-copy\">'+explanation+affordability+'<br><br>ผู้ที่ยืนยันจะจ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วยต่อคนที่ยืนยัน</div>',
+   buttons);
+ }
+ $('dialog').classList.add('meeting-dialog');
+}
+
+function joinRoom(code){const name=$('playerName').value.trim()||'Engineer';if(!selectedPawn){modal('กรุณาเลือกตัวหมาก','โปรดเลือกตัวหมากที่ยังว่างก่อนเข้าร่วมห้อง',[{text:'ตกลง',fn:close}]);return}socket.emit('join',{room:code,name,pawn:selectedPawn})}
+function enterGame(){ $('lobby').style.display='none';$('game').style.display='block'; }
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function animateMove(previous,next){
+ if(moveLock)return;
+ const mover=previous?.players?.[previous.current];
+ if(!previous||!next.started||!mover)return render();
+ const moved=next.players.find(p=>p.id===mover.id);
+ if(!moved||moved.pos===mover.pos)return render();
+ const oldPos=mover.pos,steps=(moved.pos-oldPos+40)%40;
+ if(!steps)return render();
+ moveLock=true;displayedPositions.set(mover.id,oldPos);
+ $('d1').classList.add('rolling');$('d2').classList.add('rolling');
+ render();
+ for(let step=1;step<=steps;step++){
+  displayedPositions.set(mover.id,(oldPos+step)%40);
+  render();await sleep(190);
+ }
+ $('d1').classList.remove('rolling');$('d2').classList.remove('rolling');
+ displayedPositions.delete(mover.id);moveLock=false;render();
+}
+function render(){
+ if(!state)return;
+ enterGame();
+ if(state.started){if(!timerInterval)timerInterval=setInterval(updateTimer,1000);updateTimer()}else{if(timerInterval)clearInterval(timerInterval);timerInterval=null;updateTimer()}
+ $('roomLabel').textContent='ROOM '+room+' · '+(state.started?'กำลังเล่น':'รอผู้เล่น');
+  $('roomBadge').style.display='block';$('roomBadge').textContent='ROOM CODE: '+room;
+  const canHostStart=!state.started&&state.host===myId&&state.players.length>=2;
+  $('hostStart').style.display=canHostStart?'inline-block':'none';
+  $('hostStart').disabled=!!state.countdown;
+ const players=Array.isArray(state.players)?state.players:[];
+ const currentPlayer=players[state.current];
+ $('players').innerHTML=Array.from({length:4},(_,i)=>{
+  const p=players[i];
+  if(!p)return `<div class="player empty" style="--player-color:${colors[i]}"><span style="font-size:25px">＋</span><div><div class="pname">รอผู้เล่น ${i+1}</div><div class="pmeta">สีประจำทีม ${['แดงเลือดหมู','น้ำเงิน','เขียว','ส้ม'][i]}</div></div></div>`;
+  return `<div class="player ${p.id===currentPlayer?.id?'active':''} ${p.id===myId?'me':''}" style="--player-color:${p.color||colors[i]}"><img class="avatar" src="${spriteUrl(p)}" alt=""><div style="min-width:0;flex:1"><div class="pname">${p.name} ${p.id===myId?'(คุณ)':''}</div><div class="pmoney">เงิน ${Number(p.cash||0).toLocaleString()} ฿</div><div class="pmeta">เครดิต ${p.credits||0} · พื้นที่ ${(p.assets||[]).length} แห่ง</div></div></div>`;
+ }).join('');
+ $('status').textContent=state.started?(currentPlayer?.name||'')+' กำลังเล่น':'รอเริ่มเกม (อย่างน้อย 2 คน)';
+ $('roll').disabled=!state.started||!!state.meeting||currentPlayer?.id!==myId||state.rolled;
+ 
+ const faceValue=v=>({'⚀':1,'⚁':2,'⚂':3,'⚃':4,'⚄':5,'⚅':6}[v]||1);
+  const diceToShow=state.dice||displayedDice;drawDie('d1',faceValue(diceToShow?.[0]));drawDie('d2',faceValue(diceToShow?.[1]));
+ const board=$('board');
+ board.querySelectorAll('.tile').forEach(n=>n.remove());
+ pos.forEach(([c,r],i)=>{
+  const t=document.createElement('div');t.className='tile';
+  t.style.gridColumn=(c+1);t.style.gridRow=(r+1);
+  const owner=state.owners[i],ownerPlayer=players.find(p=>p.id===owner),onTile=players.some(p=>p.id===myId&&(displayedPositions.get(p.id)??p.pos)===i);
+  if(ownerPlayer){
+   t.style.border='4px solid '+ownerPlayer.color;
+   t.style.boxShadow='inset 0 0 0 2px #ffffff,0 2px 0 #263f36';
+   t.style.background=`linear-gradient(145deg,${ownerPlayer.color}22,${ownerPlayer.color}44),#ffffff`;
+   t.dataset.ownerColor=ownerPlayer.color;
+  }if(onTile)t.classList.add('current');
+  const band=document.createElement('div');band.className='stripe';band.style.background=tileColors[Math.floor(i/8)%tileColors.length];t.appendChild(band);
+  const name=document.createElement('strong');name.textContent=places[i][0];t.appendChild(name);
+  const price=document.createElement('small');price.textContent=places[i][1]?places[i][1]+' ฿':'';t.appendChild(price);
+  if(places[i][1]>0&&![4,39].includes(i)){
+   const pm=document.createElement('small');pm.className='tile-pm';pm.textContent='PM +'+(i===26?15:5+((i*7+3)%8));t.appendChild(pm);
+  }
+  if(owner!==undefined){const o=document.createElement('div');o.className='owner';o.style.color=players.find(p=>p.id===owner)?.color||'#333';o.textContent=players.find(p=>p.id===owner)?.name||'มีเจ้าของ';t.appendChild(o)}
+  const tokens=document.createElement('div');tokens.className='tokens';
+  players.filter(p=>(displayedPositions.get(p.id)??p.pos)===i).forEach(p=>{const idx=players.indexOf(p);const tok=document.createElement('img');tok.className='token'+(displayedPositions.has(p.id)?' walking':'');tok.src=spriteUrl(p);tok.alt=p.name;tokens.appendChild(tok)});
+  t.appendChild(tokens);board.appendChild(t);
+ });
+ $('startGame').style.display=canHostStart?'inline-block':'none';
+}
+renderPawnChoices([]);
+drawDie('d1',1);drawDie('d2',1);
+function connect(){
+ if(typeof io==='undefined'){$('connection').textContent='● ไม่พบการเชื่อมต่อเซิร์ฟเวอร์';return}
+ socket=io();
+ socket.on('connect',()=>{$('connection').textContent='● ONLINE';myId=socket.id;const q=new URLSearchParams(location.search).get('room');if(q){$('lobby').style.display='flex';$('playBtn').style.display='none';$('roomOptions').style.display='block';$('joinBox').style.display='block';$('code').value=q;joinRoom(q)}});
+ socket.on('disconnect',()=>{$('connection').textContent='● OFFLINE'});
+ socket.on('state',s=>{
+ const previous=state;
+ const meetingJustStarted=!!s.meeting&&!(previous&&previous.meeting);
+ state=s;room=s.code;render();
+ if(meetingJustStarted)meetingSound();
+ if(previous&&previous.current!==s.current&&s.started&&!s.meeting){
+  const who=s.players[s.current]?.name||'ผู้เล่นถัดไป';
+  $('turnNoticeText').textContent='ตาของ '+who;$('turnNotice').style.display='flex';
+  setTimeout(()=>{$('turnNotice').style.display='none'},1500);
+ }
+ if(s.meeting&&!$('modal').dataset.meetingShown){$('modal').dataset.meetingShown='1';showMeeting(s.meeting)}
+ if(!s.meeting){$('modal').dataset.meetingShown='';}
+});
+ socket.on('roomInfo',info=>{
+  joinChecked=true;joinCodeChecked=info.code;window.takenPawns=info.takenPawns||[];
+  if(selectedPawn&&window.takenPawns.includes(selectedPawn))selectedPawn=null;
+  renderPawnChoices(window.takenPawns);
+  $('join').disabled=false;$('join').textContent='เข้าร่วมห้อง';
+  $('pawnHint').textContent='ตัวหมากที่ถูกเลือกแล้วจะกดไม่ได้ เลือกตัวที่ยังว่าง';
+ });
+ socket.on('pawnUnavailable',info=>{
+  joinChecked=false;selectedPawn=null;window.takenPawns=info.takenPawns||[];
+  renderPawnChoices(window.takenPawns);$('join').disabled=false;$('join').textContent='ตรวจสอบห้อง';
+  modal('ตัวหมากถูกเลือกแล้ว',info.message||'กรุณาเลือกตัวหมากอื่น',[{text:'ตกลง',fn:close}]);
+ });
+ socket.on('playerMoved',async m=>{
+  if(!state)return;
+  displayedDice=m.dice||displayedDice;
+  $('d1').classList.add('rolling');$('d2').classList.add('rolling');
+  moveLock=true;
+  try{
+   // แสดงผลลูกเต๋าก่อนเริ่มเดิน เพื่อให้ผู้เล่นเห็นแต้มชัดเจน
+   await sleep(900);
+   const value=v=>({'⚀':1,'⚁':2,'⚂':3,'⚃':4,'⚄':5,'⚅':6}[v]||1);
+   const first=value(displayedDice?.[0]),second=value(displayedDice?.[1]);
+   drawDie('d1',first);drawDie('d2',second);
+   $('d1').classList.remove('rolling');$('d2').classList.remove('rolling');
+   $('diceResult').textContent=`🎲 ได้ ${first} + ${second} = ${first+second} แต้ม`;
+   await sleep(1100);
+   displayedPositions.set(m.playerId,m.from);
+   for(let step=1;step<=m.steps;step++){
+    displayedPositions.set(m.playerId,(m.from+step)%40);
+    render();await sleep(190);
+   }
+   await sleep(250);
+  }finally{
+   $('d1').classList.remove('rolling');$('d2').classList.remove('rolling');
+   displayedPositions.delete(m.playerId);moveLock=false;render();
+   if(m.playerId===myId){await sleep(3000);socket.emit('movementComplete',{room,turnId:m.turnId});}
+  }
+});
+socket.on('meetingAnswerResult',result=>{
+  if(!result?.ok){
+   const meeting=state?.meeting;
+   const message=result?.message||'ไม่สามารถบันทึกคำตอบได้';
+   modal('ไม่สามารถยืนยันมาตรการได้', '<div class=\"meeting-copy\">'+message+(result?.required?'<br>ต้องมีเงินอย่างน้อย '+result.required.toLocaleString()+' บาท':'')+'</div>', [{text:'กลับไปที่ประชุม',fn:()=>showMeeting(meeting)}]);
+   $('dialog').classList.add('meeting-dialog');
+   return;
+  }
+  if(state?.meeting)showMeeting(state.meeting);
+ });
+socket.on('meetingEnd',()=>close());
+  socket.on('timerTick',t=>{if(state){state.elapsedSeconds=t.elapsedSeconds;state.pm25=t.pm25;updateTimer()}});
+  socket.on('message',m=>log(m));
+  socket.on('gameCountdown',c=>{if($('startGame'))$('startGame').disabled=true;if($('hostStart'))$('hostStart').disabled=true;showCountdown(c.seconds||3).finally(()=>{if($('startGame'))$('startGame').disabled=false;if($('hostStart'))$('hostStart').disabled=false})});
+ socket.on('errorMessage',m=>{$('join').disabled=false;modal('แจ้งเตือน',m,[{text:'ตกลง',fn:close}])});
+ function showPurchaseOffer(o){
+ if(!o)return;
+ const offerId=o.offerId||('recovered-'+o.index+'-'+o.price);
+ if(pendingOffer?.offerId===offerId)return;
+ pendingOffer={...o,offerId};
+ if(offerTimer)clearTimeout(offerTimer);
+ offerTimer=setTimeout(()=>{
+  if(!pendingOffer||pendingOffer.offerId!==offerId)return;
+  const me=state?.players?.find(p=>p.id===myId);
+  const cash=Number(o.cash??me?.cash??0);
+  const affordable=cash>=Number(o.price);
+  const isBuyout=o.type==='buyout';
+  const body='สถานที่: <b>'+o.name+'</b><br>'+(isBuyout?'เจ้าของปัจจุบัน: <b>'+o.ownerName+'</b><br>ราคาซื้อแย่ง (เพิ่ม 30%): ':'ราคา: ')+ '<b>'+Number(o.price).toLocaleString()+' บาท</b><br>เงินของคุณ: <b>'+cash.toLocaleString()+' บาท</b>'+(isBuyout?'<br>เงินจะโอนให้เจ้าของเดิม<br>เมื่อซื้อจะเพิ่ม PM2.5 '+(o.pollution||0)+' หน่วย<br>หากไม่ซื้อ จะจ่ายค่าเสียหาย 50% ของราคาเดิม ('+Math.ceil(Number(o.basePrice||0)/2).toLocaleString()+' บาท)':'<br>หากซื้อจะเพิ่ม PM2.5 '+(o.pollution||0)+' หน่วย')+
+   (affordable?'':'<br><br><span style="color:#ffb2a8;font-weight:800">เงินของท่านไม่เพียงพอในขณะนี้ แต่ยังเลือกกดซื้อได้ ระบบจะแจ้งเตือนและจะไม่หักเงินหรือเปลี่ยนเจ้าของพื้นที่</span>');
+  // ให้เลือกซื้อหรือไม่ซื้อได้เสมอ แม้เงินไม่พอจะให้เซิร์ฟเวอร์ตรวจสอบและแจ้งเตือน
+  const buttons=[
+   {text:'ซื้อพื้นที่',fn:()=>{if(!pendingOffer)return;socket.emit('buy',{room});pendingOffer=null;close();}},
+   {text:'ไม่ซื้อ',alt:true,fn:()=>{if(!pendingOffer)return;socket.emit('pass',{room});pendingOffer=null;close();}}
+  ];
+  modal(isBuyout?'⚔️ ซื้อแย่งพื้นที่: '+o.name:'📍 คุณตกช่อง: '+o.name,body,buttons);
+ },0);
+}
+socket.on('purchaseOffer',showPurchaseOffer);
+socket.on('state',s=>{
+ if(s.pendingOffer&&s.pendingOffer.player===myId){
+  showPurchaseOffer({...s.pendingOffer,offerId:s.pendingOffer.offerId||('recovered-'+s.code+'-'+s.pendingOffer.index+'-'+s.current)});
+ }
+});
+ socket.on('purchaseResult',result=>{
+  if(result.success){
+   if(result.buyout)cashChaChingSound();else purchaseSound();
+   log((result.buyout?'ซื้อแย่ง ':'ซื้อ ')+result.name+' สำเร็จ!');
+  }else{
+   modal('เงินของท่านไม่เพียงพอ','เงินของท่านไม่เพียงพอสำหรับซื้อ '+result.name+' กรุณากดตกลงเพื่อจบการเลือกซื้อและเปลี่ยนตาถัดไป',[{text:'ตกลง',fn:()=>{socket.emit('purchaseFailureAcknowledge',{room});close()}}]);
+  }
+ });
+ socket.on('gameOver',w=>{
+ victorySound();championCelebration();
+ const standings=w.standings||[];
+ const winnerName=w.winnerName||(standings.find(p=>String(p.id)===String(w.winnerId))||{}).name||(w.winners||[])[0]||'ผู้ชนะ';
+ const winnerIndex=standings.findIndex(p=>w.winnerId!=null?String(p.id)===String(w.winnerId):p.name===winnerName);
+ const rows=standings.map((p,i)=>{
+  const isChampion=winnerIndex===i;
+  const rank=Math.min(i+1,4);
+  const medal=['🥇','🥈','🥉',''][rank-1];
+  const rankClass=`rank-${rank}`;
+  return `<tr class="${rankClass}${isChampion?' champion-row':''}">
+   <td><strong>${medal?medal+' ':''}${i+1}</strong></td>
+   <td><strong>${p.name}</strong>${isChampion?'<span class="champion-tag">🏆 ผู้ชนะ</span>':''}</td>
+   <td>${Number(p.cash||0).toLocaleString()} ฿</td><td>${Number(p.credits||0)}</td><td>${Number(p.assets||0)}</td></tr>`;
+ }).join('');
+ const table='<div class="winner-rank-legend"><span class="gold">🥇 อันดับ 1</span><span class="silver">🥈 อันดับ 2</span><span class="bronze">🥉 อันดับ 3</span><span class="normal">อันดับ 4</span></div><table class="winner-table"><thead><tr><th>อันดับ</th><th>ชื่อผู้เล่น</th><th>เงินคงเหลือ</th><th>เครดิต</th><th>พื้นที่</th></tr></thead><tbody>'+rows+'</tbody></table>';
+ const rule=w.winnerRule||'เงินคงเหลือมากที่สุด หากเงินเท่ากันใช้เครดิตตัดสิน';
+ const detail=w.instant?'<b>ชนะทันที! เครดิตครบ 50 คะแนน</b>':'หมดเวลา 20 นาที — ตัดสินจากเงินสดก่อน แล้วใช้เครดิตเมื่อเงินเท่ากัน';
+ modal('🏆 จบเกม',`<div class="winner-crown">👑🏆👑</div><div class="winner-title">🏆 CHAMPION 🏆</div>
+  <div class="winner-champion-banner"><div class="winner-champion-label">อันดับหนึ่งของเกม • ผู้ชนะ</div><div class="winner-champion-name">${winnerName}</div></div>
+  <div><b>${w.reason||'จบเกม'}</b><br>${detail}</div>${table}<div><b>เกณฑ์ตัดสิน:</b> ${rule}</div>`,
+  [{text:'ปิด',fn:close}]);
+});
+}
+function showRules(){
+ const body=`<div class="rules-copy">
+ <h3>🎯 เป้าหมายของเกม</h3>
+ เดินสำรวจพื้นที่ในกาญจนบุรี ซื้อพื้นที่ เก็บเงิน และสะสมเครดิตให้ถึง 50 คะแนนเพื่อชนะทันที
+ <h3>🎲 การเดินและจุดเริ่มต้น</h3>
+ ทอยลูกเต๋า 2 ลูกเพื่อเดินตามแต้ม หากเดินผ่านจุดเริ่มต้น รับเงิน 300 บาท
+ <h3>🏞️ ช่องพื้นที่</h3>
+ เมื่อตกพื้นที่ที่ยังไม่มีเจ้าของ จะมีหน้าต่างถามว่าจะซื้อหรือไม่ซื้อ ซื้อได้เมื่อมีเงินเพียงพอเท่านั้น
+ หากตกพื้นที่ของผู้เล่นอื่น สามารถซื้อแย่งได้ในราคาเดิมเพิ่ม 30% โดยโอนเงินให้เจ้าของเดิมและเปลี่ยนสีเจ้าของพื้นที่ หากไม่ซื้อจะจ่ายค่าเสียหาย 50% ของราคาพื้นที่ให้เจ้าของ
+ เมื่อซื้อพื้นที่ จะเพิ่มค่า PM2.5 ตามพื้นที่นั้น โดยทั่วไป 5–12 หน่วย และช่องเหมืองปิล็อกเพิ่ม 15 หน่วย
+ <h3>🎁 ช่องโอกาส และ 🏦 ช่องกองกลาง</h3>
+ ทั้งสองช่องสุ่มเหตุการณ์ด้านการเงินเหมือนกัน: รับเงิน +100, +150 หรือ +200 บาท หรือจ่ายเงิน 50 หรือ 100 บาท
+ ช่องเหล่านี้ไม่เพิ่มเครดิตและไม่เปลี่ยนค่า PM2.5
+ <h3>🌫️ การประชุม PM2.5</h3>
+ เมื่อ PM2.5 ถึง 50 หน่วย จะเริ่มประชุม ผู้เล่นเลือกยืนยันหรือปฏิเสธ
+ ยืนยัน: จ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วยต่อผู้เล่นที่ยืนยัน
+ หากไม่มีใครยืนยัน ค่า PM2.5 จะคงเดิม และจะเรียกประชุมอีกครั้งเมื่อถึง 60 หน่วย โดยรอบ 60 เป็นการประชุมบังคับยืนยัน
+ เมื่อมีผู้ยืนยันแล้ว ค่า PM2.5 จะลดตามจำนวนคนที่ยืนยัน และรอให้ค่า PM2.5 เพิ่มกลับถึง 50 เพื่อเริ่มประชุมรอบใหม่
+ หากเงินไม่ถึง 300 บาท จะยืนยันไม่ได้
+ <h3>🏆 เงื่อนไขการชนะ</h3>
+ ผู้เล่นที่มีเครดิตครบ 50 คะแนนชนะทันที
+ หากไม่มีใครถึง 50 คะแนนเมื่อครบ 20 นาที ให้ผู้ที่มีเงินสดมากที่สุดชนะ หากเงินเท่ากันให้ดูเครดิต หากทั้งเงินและเครดิตเท่ากันจะชนะร่วมกัน
+ </div>`;
+ modal('📖 กติกาเกม PM2.5 KANCHANABURI',body,[{text:'ปิดกติกา',fn:close}]);
+}
+$('rulesBtn').onclick=showRules;
+$('playBtn').onclick=()=>{$('playBtn').style.display='none';$('roomOptions').style.display='block';$('playerName').focus()};
+document.querySelectorAll('.pawn-choice').forEach(btn=>btn.onclick=()=>{
+ const id=btn.dataset.pawn;if(btn.disabled)return;selectedPawn=id;renderPawnChoices(joinChecked?window.takenPawns||[]:[]);
+});
+$('showJoin').onclick=()=>{$('joinBox').style.display=$('joinBox').style.display==='block'?'none':'block';joinChecked=false;joinCodeChecked='';$('join').textContent='ตรวจสอบห้อง';$('code').focus()};
+$('create').onclick=()=>{
+ const name=$('playerName').value.trim()||'Engineer';
+ if(!selectedPawn){modal('กรุณาเลือกตัวหมาก','เลือกตัวหมาก 1 แบบก่อนสร้างห้อง',[{text:'ตกลง',fn:close}]);return}
+ socket.emit('create',{name,pawn:selectedPawn});
+};
+$('join').onclick=()=>{
+ const c=$('code').value.trim().toUpperCase();
+ if(!c){modal('กรุณากรอกรหัสห้อง','ขอรหัสห้องจากเพื่อนก่อน',[{text:'ตกลง',fn:close}]);return}
+ if(!joinChecked||joinCodeChecked!==c){joinChecked=false;joinCodeChecked=c;selectedPawn=null;$('join').disabled=true;socket.emit('checkRoom',{room:c});return}
+ joinRoom(c);
+};
+$('startGame').onclick=()=>socket.emit('start',{room});$('hostStart').onclick=()=>socket.emit('start',{room});
+$('roll').onclick=()=>{
+ if($('roll').disabled)return;
+ $('roll').disabled=true;displayedDice=null;$('diceResult').textContent='กำลังทอยลูกเต๋า…';$('d1').classList.add('rolling');$('d2').classList.add('rolling');
+ diceSound();socket.emit('roll',{room});
+ setTimeout(()=>{if(!displayedDice){$('d1').classList.remove('rolling');$('d2').classList.remove('rolling');$('roll').disabled=false}},5000);
+};
+
+$('assets').onclick=()=>{const p=state?.players.find(p=>p.id===myId);modal('ทรัพย์สินของฉัน',p?.assets.map(i=>places[i][0]+' · '+places[i][1]+' เครดิต').join('<br>')||'ยังไม่มีทรัพย์สิน',[{text:'ปิด',fn:close}])};
+function playTone(freq=440,duration=.12,type='sine',volume=.08){
+ try{
+  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+  const now=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  osc.type=type;osc.frequency.setValueAtTime(freq,now);
+  gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(volume,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+  osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now);osc.stop(now+duration+.02);
+ }catch(e){}
+}
+function meetingSound(){
+ // เสียงเตือนประชุม: ระฆังเตือนสามจังหวะ
+ try{
+  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+ }catch(e){}
+ [784,659,784,988].forEach((f,i)=>setTimeout(()=>playTone(f,.22,'sine',.11),i*180));
+}
+function championCelebration(){
+ const old=document.getElementById('championFx');if(old)old.remove();
+ const layer=document.createElement('div');layer.id='championFx';layer.setAttribute('aria-hidden','true');
+ layer.style.cssText='position:fixed;inset:0;z-index:19;pointer-events:none;overflow:hidden';
+ const colors=['#ffe16b','#ff6b6b','#43bde8','#62d68b','#c58bff','#fff'];
+ for(let i=0;i<90;i++){
+  const bit=document.createElement('i');const angle=Math.random()*Math.PI*2;const distance=35+Math.random()*65;
+  bit.style.cssText=`position:absolute;left:50%;top:50%;width:${5+Math.random()*8}px;height:${8+Math.random()*12}px;background:${colors[i%colors.length]};border-radius:2px;opacity:0;transform:translate(-50%,-50%);animation:championBurst ${900+Math.random()*1100}ms cubic-bezier(.1,.7,.2,1) ${Math.random()*250}ms forwards`;
+  bit.dataset.dx=Math.cos(angle)*distance+'vw';bit.dataset.dy=Math.sin(angle)*distance+'vh';layer.appendChild(bit);
+ }
+ document.body.appendChild(layer);
+ layer.querySelectorAll('i').forEach(bit=>{bit.animate([{transform:'translate(-50%,-50%) scale(.2) rotate(0deg)',opacity:1},{transform:`translate(calc(-50% + ${bit.dataset.dx}),calc(-50% + ${bit.dataset.dy})) scale(1) rotate(720deg)`,opacity:0}],{duration:1500+Math.random()*900,easing:'cubic-bezier(.1,.7,.2,1)',fill:'forwards'});});
+ setTimeout(()=>layer.remove(),3200);
+}
+function victorySound(){
+ try{
+  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+ }catch(e){}
+ const notes=[523.25,659.25,783.99,1046.5,783.99,1046.5,1318.51];
+ notes.forEach((f,i)=>setTimeout(()=>playTone(f,.28,'triangle',.13),i*145));
+ setTimeout(()=>playTone(1567.98,.55,'sine',.12),1100);
+ [2093,2637,3136].forEach((f,i)=>setTimeout(()=>playTone(f,.32,'sine',.09),1450+i*120));
+}
+function cashChaChingSound(){
+ try{
+  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+ }catch(e){}
+ // Coin cascade + cash-register cha-ching, synthesized with Web Audio.
+ [880,1174.66,1396.91].forEach((f,i)=>setTimeout(()=>playTone(f,.12,'triangle',.12),i*75));
+ setTimeout(()=>playTone(1760,.22,'sine',.13),260);
+ setTimeout(()=>playTone(1318.51,.18,'square',.045),320);
+}
+function purchaseSound(){
+ // เสียงเหรียญและกระดิ่งเมื่อซื้อพื้นที่สำเร็จ
+ try{
+  audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+ }catch(e){}
+ [659.25,830.61,987.77].forEach((f,i)=>setTimeout(()=>playTone(f,.17,'triangle',.11),i*95));
+ setTimeout(()=>playTone(1318.51,.28,'sine',.10),300);
+ setTimeout(()=>playTone(1567.98,.18,'triangle',.07),420);
+}
+function diceSound(){
+ [520,390,620,470,740,560].forEach((f,i)=>setTimeout(()=>playTone(f,.075,'square',.035),i*65));
+}
+function countdownSound(n){playTone(n===1?880:n===2?660:520,.28,'triangle',.09)}
+async function showCountdown(seconds=3){
+ const el=$('countdownNotice');if(!el)return;
+ el.style.display='flex';
+ for(let n=seconds;n>=1;n--){
+  el.textContent=String(n);
+  el.animate([{transform:'scale(.55)',opacity:.25},{transform:'scale(1.18)',opacity:1},{transform:'scale(1)',opacity:1}],{duration:650,easing:'cubic-bezier(.2,.8,.2,1)'});
+  countdownSound(n);await sleep(1000);
+ }
+ el.textContent='เริ่มเกม!';
+ playTone(1046,.18,'triangle',.12);setTimeout(()=>playTone(1318,.24,'triangle',.1),130);
+ await sleep(650);el.style.display='none';
+}
+function musicStep(){
+ if(!audioCtx||!musicOn)return;
+ // เพลงประกอบต้นฉบับแนว 8-bit platform adventure:
+ // จังหวะเด้ง สนุก สดใส มีเบสเดิน เมโลดี้ซิงโคเปชัน และเสียงเพอร์คัสชัน
+ // ออกแบบใหม่ ไม่ได้คัดลอกทำนองจากเกมหรือเพลงที่มีลิขสิทธิ์
+ const step=musicStepIndex++%32,now=audioCtx.currentTime;
+ const lead=[
+  392,0,523.25,587.33,659.25,0,587.33,523.25,
+  440,0,523.25,659.25,783.99,659.25,587.33,0,
+  349.23,0,440,523.25,587.33,0,523.25,440,
+  392,493.88,587.33,659.25,783.99,0,659.25,523.25
+ ];
+ const bass=[
+  98,0,98,146.83,130.81,0,130.81,196,
+  110,0,110,164.81,146.83,0,146.83,220,
+  87.31,0,87.31,130.81,116.54,0,116.54,174.61,
+  98,0,98,146.83,130.81,0,130.81,196
+ ];
+ const roots=[196,220,174.61,196];
+ const playNote=(freq,type,peak,duration,attack=.008)=>{
+  if(!freq)return;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  g.gain.setValueAtTime(.0001,now);
+  g.gain.exponentialRampToValueAtTime(peak,now+attack);
+  g.gain.exponentialRampToValueAtTime(.0001,now+duration);
+  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+duration+.015);
+ };
+ // Bouncy bass line with short off-beat notes.
+ if(bass[step])playNote(bass[step],'triangle',.105,.19,.012);
+ // Bright retro lead: pulse wave with short, plucky envelope.
+ if(lead[step])playNote(lead[step],'square',.038,.14,.006);
+ // Little high-register answer notes create a playful call-and-response.
+ const sparkle={3:1046.5,7:987.77,11:1174.66,15:1046.5,19:880,23:987.77,27:1174.66,31:1046.5};
+ if(sparkle[step])playNote(sparkle[step],'sine',.025,.10,.004);
+ // Chord stabs at the start of each 8-step phrase.
+ if(step%8===0){
+  const root=roots[Math.floor(step/8)%roots.length];
+  [root,root*1.25,root*1.5].forEach((f,i)=>playNote(f,'triangle',i===0?.025:.018,.34,.025));
+ }
+ // Kick on the beat and a crisp snare-like pop on alternating beats.
+ if(step%4===0){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='sine';o.frequency.setValueAtTime(135,now);
+  o.frequency.exponentialRampToValueAtTime(48,now+.105);
+  g.gain.setValueAtTime(.12,now);g.gain.exponentialRampToValueAtTime(.0001,now+.13);
+  o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.14);
+ }
+ if(step%8===4){
+  playNote(210,'triangle',.035,.075,.003);
+  playNote(165,'sine',.022,.065,.003);
+ }
+ // Light 8-bit hi-hat ticks keep the groove moving.
+ if(step%2===1){
+  const length=Math.floor(audioCtx.sampleRate*.035);
+  const buffer=audioCtx.createBuffer(1,length,audioCtx.sampleRate),data=buffer.getChannelData(0);
+  for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(1-i/length);
+  const src=audioCtx.createBufferSource(),g=audioCtx.createGain(),filter=audioCtx.createBiquadFilter();
+  src.buffer=buffer;filter.type='highpass';filter.frequency.value=7200;
+  g.gain.value=.018;src.connect(filter);filter.connect(g);g.connect(audioCtx.destination);src.start(now);
+ }
+}
+$('music').onclick=async()=>{
+ if(!musicOn){audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();await audioCtx.resume();musicOn=true;musicStepIndex=0;musicStep();musicTimer=setInterval(musicStep,125);$('music').textContent='♫ เพลง: เปิด · สนุก'}
+ else{musicOn=false;clearInterval(musicTimer);musicTimer=null;if(audioCtx)await audioCtx.suspend();$('music').textContent='♫ เพลง: ปิด'}
+};
+connect();
+})();
+</script>
+</body></html>
