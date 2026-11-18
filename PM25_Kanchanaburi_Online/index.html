@@ -245,41 +245,68 @@ function modal(title,body,buttons){
  dialog.classList.toggle('rules-dialog',isRules);
  dialog.innerHTML='<h2>'+title+'</h2><div class="modal-body">'+body+'</div><div id="modalButtons"></div>'+
   (isRules?'<button type="button" class="rules-close-x" aria-label="ปิดกติกา" title="ปิดกติกา" onclick="close()">×</button>':'');
- buttons.forEach(b=>{let x=document.createElement('button');x.className=b.alt?'alt':'btn';x.textContent=b.text;x.onclick=b.fn;$('modalButtons').appendChild(x)});
+ buttons.forEach(b=>{let x=document.createElement('button');x.className=b.alt?'alt':'btn';x.textContent=b.text;x.disabled=!!b.disabled;if(b.title)x.title=b.title;if(b.disabled)x.setAttribute('aria-disabled','true');x.onclick=b.fn;$('modalButtons').appendChild(x)});
  $('modal').style.display='flex';
 }
 function close(){
  $('modal').style.display='none';
  $('dialog').classList.remove('rules-dialog');
 }
+function submitMeetingAnswer(answer){
+ const meeting=state?.meeting;
+ if(!meeting||!socket)return;
+ const player=state?.players.find(x=>x.id===myId);
+ const cash=Number(player?.cash)||0;
+ if(answer==='confirm'&&cash<300){
+  modal('เงินไม่เพียงพอ', '<div class=\"meeting-copy\">การยืนยันมาตรการต้องใช้เงิน 300 บาท<br>ขณะนี้คุณมีเงิน '+cash.toLocaleString()+' บาท จึงยังยืนยันไม่ได้</div>', [{text:'กลับไปที่ประชุม',fn:()=>showMeeting(state?.meeting||meeting)}]);
+  $('dialog').classList.add('meeting-dialog');
+  return;
+ }
+ socket.emit('meetingAnswer',{room,answer});
+ modal('กำลังบันทึกคำตอบ', '<div class=\"meeting-copy\">กำลังส่งคำตอบไปตรวจสอบกับระบบเกม กรุณารอสักครู่</div>', [{text:'รอระบบ',disabled:true,fn:()=>{}}]);
+ $('dialog').classList.add('meeting-dialog');
+}
 function showMeeting(meeting){$('modal').dataset.meetingShown='1';
+ if(!meeting)return;
  const answered=meeting.answers?.[myId];
  const p=state?.players.find(x=>x.id===myId);
- const canPay=(p?.cash||0)>=300;
+ const cash=Number(p?.cash)||0;
+ const canPay=cash>=300;
  const forced=!!meeting.forced;
- const art='<img class="meeting-art" src="assets/meeting-room-pm25.png" alt="ห้องประชุมติดตามค่า PM2.5">';
+ const art='<img class=\"meeting-art\" src=\"assets/meeting-room-pm25.png\" alt=\"ห้องประชุมติดตามค่า PM2.5\">';
  if(answered){
   modal('🗣️ ประชุมติดตามค่า PM2.5 รอบที่ '+meeting.number,
-   art+'<div class="meeting-alert">PM2.5 ถึง '+meeting.threshold+' หน่วยแล้ว</div><div class="meeting-copy">คุณตอบแล้ว: '+(answered==='confirm'?'ยืนยัน':answered==='unable'?'เงินไม่เพียงพอ':'ปฏิเสธ')+'<br>รอผู้เล่นคนอื่นตอบครบทุกคน</div>',
-   [{text:'รอผู้เล่น',fn:()=>{}}]);
+   art+'<div class=\"meeting-alert\">PM2.5 ถึง '+meeting.threshold+' หน่วยแล้ว</div><div class=\"meeting-copy\">คุณตอบแล้ว: '+(answered==='confirm'?'ยืนยัน':answered==='unable'?'เงินไม่เพียงพอ':'ปฏิเสธ')+'<br>รอผู้เล่นคนอื่นตอบครบทุกคน</div>',
+   [{text:'รอผู้เล่น',disabled:true,fn:()=>{}}]);
  }else{
+  const affordability=canPay
+   ? '<br><br>ยอดเงินของคุณ '+cash.toLocaleString()+' บาท เพียงพอสำหรับมาตรการ'
+   : '<br><br><b style=\"color:#ffcf91\">เงินของคุณมี '+cash.toLocaleString()+' บาท ซึ่งไม่ถึง 300 บาท จึงไม่สามารถยืนยันมาตรการได้</b>';
   const explanation=forced
-   ? '<b>รอบบังคับยืนยัน:</b> ต้องกดยืนยันมาตรการ ผู้ที่มีเงินไม่ถึง 300 บาทจะไม่สามารถร่วมจ่ายได้'
+   ? '<b>รอบบังคับยืนยัน:</b> ผู้ที่มีเงินตั้งแต่ 300 บาทขึ้นไปจึงจะยืนยันได้ ผู้ที่เงินไม่พอให้แจ้งสถานะว่าไม่สามารถร่วมจ่ายได้'
    : '<b>ยืนยัน:</b> จ่าย 300 บาท ได้เครดิต +10<br><b>ปฏิเสธ:</b> ไม่เสียเงินและไม่ได้เครดิตเพิ่ม<br>หากไม่มีใครยืนยัน ค่า PM2.5 จะคงเดิม และจะประชุมบังคับอีกครั้งเมื่อถึง 60';
+  const confirmButton={
+   text:canPay?(forced?'ยืนยันมาตรการ (บังคับ)':'ยืนยันมาตรการ'):'ยืนยันมาตรการไม่ได้ (เงินไม่ถึง 300 บาท)',
+   disabled:!canPay,
+   title:canPay?'จ่าย 300 บาทเพื่อรับเครดิต +10':'ต้องมีเงินอย่างน้อย 300 บาท จึงจะยืนยันได้',
+   fn:()=>submitMeetingAnswer('confirm')
+  };
   const buttons=forced
-   ? (canPay
-      ? [{text:'ยืนยันมาตรการ (บังคับ)',fn:()=>{socket.emit('meetingAnswer',{room,answer:'confirm'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณยืนยันมาตรการแล้ว รอผู้เล่นคนอื่น</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}]
-      : [{text:'เงินไม่ถึง 300 บาท',alt:true,fn:()=>{socket.emit('meetingAnswer',{room,answer:'unable'});modal('บันทึกคำตอบแล้ว',art+'<div class="meeting-copy">คุณมีเงินไม่เพียงพอสำหรับมาตรการ ระบบบันทึกสถานะแล้ว</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}])
+   ? [
+      confirmButton,
+      ...(!canPay?[{text:'บันทึกว่าเงินไม่เพียงพอ',alt:true,fn:()=>submitMeetingAnswer('unable')}]:[])
+     ]
    : [
-      ...(canPay?[{text:'ยืนยันมาตรการ',fn:()=>{socket.emit('meetingAnswer',{room,answer:'confirm'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกยืนยันมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}]:[]),
-      {text:'ปฏิเสธ',alt:true,fn:()=>{socket.emit('meetingAnswer',{room,answer:'reject'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกปฏิเสธมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}
-   ];
+      confirmButton,
+      {text:'ปฏิเสธ',alt:true,fn:()=>submitMeetingAnswer('reject')}
+     ];
   modal(forced?'🚨 ประชุมบังคับยืนยันมาตรการ':'⚠️ PM2.5 ถึงเกณฑ์แล้ว',
-   art+'<div class="meeting-alert">PM2.5 ถึง '+meeting.threshold+' หน่วยแล้ว</div><div class="meeting-copy">'+explanation+'<br><br>ผู้ที่ยืนยันจะจ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วยต่อคนที่ยืนยัน</div>',
+   art+'<div class=\"meeting-alert\">PM2.5 ถึง '+meeting.threshold+' หน่วยแล้ว</div><div class=\"meeting-copy\">'+explanation+affordability+'<br><br>ผู้ที่ยืนยันจะจ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วยต่อคนที่ยืนยัน</div>',
    buttons);
  }
  $('dialog').classList.add('meeting-dialog');
 }
+
 function joinRoom(code){const name=$('playerName').value.trim()||'Engineer';if(!selectedPawn){modal('กรุณาเลือกตัวหมาก','โปรดเลือกตัวหมากที่ยังว่างก่อนเข้าร่วมห้อง',[{text:'ตกลง',fn:close}]);return}socket.emit('join',{room:code,name,pawn:selectedPawn})}
 function enterGame(){ $('lobby').style.display='none';$('game').style.display='block'; }
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -405,6 +432,16 @@ function connect(){
    if(m.playerId===myId){await sleep(3000);socket.emit('movementComplete',{room,turnId:m.turnId});}
   }
 });
+socket.on('meetingAnswerResult',result=>{
+  if(!result?.ok){
+   const meeting=state?.meeting;
+   const message=result?.message||'ไม่สามารถบันทึกคำตอบได้';
+   modal('ไม่สามารถยืนยันมาตรการได้', '<div class=\"meeting-copy\">'+message+(result?.required?'<br>ต้องมีเงินอย่างน้อย '+result.required.toLocaleString()+' บาท':'')+'</div>', [{text:'กลับไปที่ประชุม',fn:()=>showMeeting(meeting)}]);
+   $('dialog').classList.add('meeting-dialog');
+   return;
+  }
+  if(state?.meeting)showMeeting(state.meeting);
+ });
 socket.on('meetingEnd',()=>close());
   socket.on('timerTick',t=>{if(state){state.elapsedSeconds=t.elapsedSeconds;state.pm25=t.pm25;updateTimer()}});
   socket.on('message',m=>log(m));
@@ -422,12 +459,13 @@ socket.on('meetingEnd',()=>close());
   const cash=Number(o.cash??me?.cash??0);
   const affordable=cash>=Number(o.price);
   const isBuyout=o.type==='buyout';
-  const body='สถานที่: <b>'+o.name+'</b><br>'+(isBuyout?'เจ้าของปัจจุบัน: <b>'+o.ownerName+'</b><br>ราคาซื้อแย่ง (เพิ่ม 30%): ':'ราคา: ')+ '<b>'+Number(o.price).toLocaleString()+' บาท</b><br>เงินของคุณ: <b>'+cash.toLocaleString()+' บาท</b>'+(isBuyout?'<br>เงินจะโอนให้เจ้าของเดิม<br>เมื่อซื้อจะเพิ่ม PM2.5 '+(o.pollution||0)+' หน่วย':'<br>หากซื้อจะเพิ่ม PM2.5 '+(o.pollution||0)+' หน่วย')+
-   (affordable?'':'<br><br><span style="color:#ffb2a8;font-weight:800">เงินของท่านไม่เพียงพอ จึงไม่สามารถซื้อพื้นที่นี้ได้</span>');
-  const buttons=affordable?[
+  const body='สถานที่: <b>'+o.name+'</b><br>'+(isBuyout?'เจ้าของปัจจุบัน: <b>'+o.ownerName+'</b><br>ราคาซื้อแย่ง (เพิ่ม 30%): ':'ราคา: ')+ '<b>'+Number(o.price).toLocaleString()+' บาท</b><br>เงินของคุณ: <b>'+cash.toLocaleString()+' บาท</b>'+(isBuyout?'<br>เงินจะโอนให้เจ้าของเดิม<br>เมื่อซื้อจะเพิ่ม PM2.5 '+(o.pollution||0)+' หน่วย<br>หากไม่ซื้อ จะจ่ายค่าเสียหาย 50% ของราคาเดิม ('+Math.ceil(Number(o.basePrice||0)/2).toLocaleString()+' บาท)':'<br>หากซื้อจะเพิ่ม PM2.5 '+(o.pollution||0)+' หน่วย')+
+   (affordable?'':'<br><br><span style="color:#ffb2a8;font-weight:800">เงินของท่านไม่เพียงพอในขณะนี้ แต่ยังเลือกกดซื้อได้ ระบบจะแจ้งเตือนและจะไม่หักเงินหรือเปลี่ยนเจ้าของพื้นที่</span>');
+  // ให้เลือกซื้อหรือไม่ซื้อได้เสมอ แม้เงินไม่พอจะให้เซิร์ฟเวอร์ตรวจสอบและแจ้งเตือน
+  const buttons=[
    {text:'ซื้อพื้นที่',fn:()=>{if(!pendingOffer)return;socket.emit('buy',{room});pendingOffer=null;close();}},
    {text:'ไม่ซื้อ',alt:true,fn:()=>{if(!pendingOffer)return;socket.emit('pass',{room});pendingOffer=null;close();}}
-  ]:[{text:'ตกลง / เปลี่ยนตา',alt:true,fn:()=>{if(!pendingOffer)return;socket.emit('pass',{room});pendingOffer=null;close();}}];
+  ];
   modal(isBuyout?'⚔️ ซื้อแย่งพื้นที่: '+o.name:'📍 คุณตกช่อง: '+o.name,body,buttons);
  },0);
 }
@@ -442,7 +480,7 @@ socket.on('state',s=>{
    if(result.buyout)cashChaChingSound();else purchaseSound();
    log((result.buyout?'ซื้อแย่ง ':'ซื้อ ')+result.name+' สำเร็จ!');
   }else{
-   modal('ซื้อพื้นที่ไม่สำเร็จ','เงินของท่านไม่เพียงพอสำหรับซื้อ '+result.name+' กรุณากดตกลงเพื่อเปลี่ยนตาถัดไป',[{text:'ตกลง',fn:()=>{socket.emit('purchaseFailureAcknowledge',{room});close()}}]);
+   modal('เงินของท่านไม่เพียงพอ','เงินของท่านไม่เพียงพอสำหรับซื้อ '+result.name+' กรุณากดตกลงเพื่อจบการเลือกซื้อและเปลี่ยนตาถัดไป',[{text:'ตกลง',fn:()=>{socket.emit('purchaseFailureAcknowledge',{room});close()}}]);
   }
  });
  socket.on('gameOver',w=>{

@@ -171,7 +171,10 @@ io.on('connection',s=>{
  s.on('buy',({room})=>{
   const r=rooms.get(String(room||'').toUpperCase());if(!r||!r.started||r.meeting||!r.pending||r.moving||r.pending.player!==s.id||!current(r,s))return;
   const p=r.players.find(x=>x.id===s.id),pending=r.pending,i=pending.index,price=pending.price;
+  // ป้องกันคำสั่งซื้อซ้ำระหว่างรอผู้เล่นกดยืนยันรับทราบข้อความเงินไม่เพียงพอ
+  if(pending.awaitingFailureAck)return;
   if(p.cash<price){
+   // ไม่หักเงิน ไม่เปลี่ยนเจ้าของ และคงข้อเสนอไว้จนกว่าจะกดรับทราบหรือหมดเวลา
    r.pending.awaitingFailureAck=true;
    s.emit('purchaseResult',{success:false,name:places[i][0],message:'เงินของท่านไม่เพียงพอ'});
    return;
@@ -212,20 +215,45 @@ io.on('connection',s=>{
  });
  s.on('meetingAnswer',({room,answer})=>{
   const r=rooms.get(String(room||'').toUpperCase());
-  if(!r||!r.meeting||r.meeting.answers[s.id])return;
-  const p=r.players.find(x=>x.id===s.id);if(!p)return;
+  if(!r||!r.meeting){
+   s.emit('meetingAnswerResult',{ok:false,message:'ไม่พบการประชุมที่กำลังดำเนินอยู่'});
+   return;
+  }
+  if(r.meeting.answers[s.id]){
+   s.emit('meetingAnswerResult',{ok:false,message:'คุณส่งคำตอบสำหรับการประชุมนี้ไปแล้ว'});
+   return;
+  }
+  const p=r.players.find(x=>x.id===s.id);
+  if(!p){
+   s.emit('meetingAnswerResult',{ok:false,message:'ไม่พบข้อมูลผู้เล่นในห้องนี้'});
+   return;
+  }
   const forced=!!r.meeting.forced;
+  const cash=Number(p.cash)||0;
   if(answer==='confirm'){
-   if(p.cash<MEETING_FEE)return s.emit('errorMessage','เงินไม่เพียงพอ ต้องมีอย่างน้อย 300 บาทเพื่อยืนยัน');
+   // ตรวจสอบเงินจากฝั่งเซิร์ฟเวอร์เสมอ ป้องกันการส่งคำสั่งยืนยันเมื่อเงินไม่ถึง 300 บาท
+   if(cash<MEETING_FEE){
+    s.emit('meetingAnswerResult',{ok:false,message:'เงินไม่เพียงพอ ต้องมีอย่างน้อย 300 บาทเพื่อยืนยันมาตรการ',cash,required:MEETING_FEE});
+    return;
+   }
    p.cash-=MEETING_FEE;p.credits+=MEETING_CREDITS;
    msg(r,`${p.name} ยืนยันมาตรการ: จ่าย 300 บาท ได้เครดิต +10`);
-   if(p.credits>=50){finishGame(r,`${p.name} มีเครดิตครบ 50 คะแนน ชนะทันที`,p.id);return;}
+   if(p.credits>=50){
+    finishGame(r,`${p.name} มีเครดิตครบ 50 คะแนน ชนะทันที`,p.id);
+    return;
+   }
   }else if(answer==='reject'&&!forced){
    msg(r,`${p.name} ปฏิเสธมาตรการ: ไม่เสียเงินและเครดิตคงเดิม`);
-  }else if(answer==='unable'&&forced&&p.cash<MEETING_FEE){
+  }else if(answer==='unable'&&forced&&cash<MEETING_FEE){
    msg(r,`${p.name} ไม่มีเงินพอสำหรับการยืนยัน ระบบบันทึกว่าไม่สามารถร่วมจ่ายได้`);
-  }else return;
-  r.meeting.answers[s.id]=answer;pub(r);
+  }else{
+   s.emit('meetingAnswerResult',{ok:false,message:'คำตอบนี้ไม่สามารถใช้ได้ในการประชุมรอบนี้',cash,required:MEETING_FEE});
+   return;
+  }
+  r.meeting.answers[s.id]=answer;
+  pub(r);
+  // ตอบกลับหลังเซิร์ฟเวอร์บันทึกคำตอบแล้วเท่านั้น เพื่อไม่ให้หน้าเกมแสดงว่ายืนยันสำเร็จล่วงหน้า
+  s.emit('meetingAnswerResult',{ok:true,answer,cash:p.cash,credits:p.credits});
   if(r.players.every(x=>r.meeting.answers[x.id])){
    const meeting=r.meeting;
    const confirmations=Object.values(meeting.answers).filter(a=>a==='confirm').length;
