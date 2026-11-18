@@ -4,7 +4,7 @@ const {Server}=require('socket.io');
 const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:"*"}});
 app.use(express.static(__dirname));
 app.get('/health',(req,res)=>res.json({ok:true,service:'PM2.5 Kanchanaburi'}));
-const rooms=new Map(),GAME_SECONDS=1200,MEETING_THRESHOLDS=[50,100,200,300],MEETING_FEE=300,MEETING_REDUCTION=5,MEETING_CREDITS=10;
+const rooms=new Map(),GAME_SECONDS=1200,MEETING_THRESHOLDS=[50,100,200,300],MEETING_FEE=300,MEETING_REDUCTION=10,MEETING_CREDITS=10;
 const places=[
 ['จุดเริ่มต้น',0],['สะพานข้ามแม่น้ำแคว',60],['กองกลาง',0],['สุสานทหารสัมพันธมิตร',60],['ค่าธรรมเนียมอุทยาน',100],['รถไฟสายมรณะ',200],['พิพิธภัณฑ์ช่องเขาขาด',100],['โอกาส',0],['น้ำตกไทรโยคน้อย',100],['น้ำตกเอราวัณ',120],['พักสถานี',0],['เขื่อนศรีนครินทร์',140],['กิจกรรมล่องแพ',150],['ถ้ำกระแซ',140],['เมืองมัลลิกา',160],['รถไฟสายมรณะ',200],['วัดถ้ำเสือ',180],['กองกลาง',0],['ต้นจามจุรียักษ์',180],['วัดเมตตาธรรมโพธิญาณ',200],['จุดชมวิว',0],['น้ำตกห้วยแม่ขมิ้น',220],['โอกาส',0],['เขื่อนวชิราลงกรณ',220],['ปิล๊อก–บ้านอีต่อง',240],['รถไฟสายมรณะ',200],['เหมืองปิล็อก',260],['ล่องแพแม่น้ำแคว',150],['สะพานมอญ',260],['เจดีย์พุทธคยา',280],['ไปสถานีพัก',0],['น้ำพุร้อนหินดาด',300],['อุทยานทองผาภูมิ',300],['กองกลาง',0],['อุทยานไทรโยค',320],['รถไฟสายมรณะ',200],['เขาช้างเผือก',350],['โอกาส',0],['อุทยานแห่งชาติเอราวัณ',400],['ภาษีท่องเที่ยว',100]];
 const PAWNS=['helmet','flask','recycle','pm25'];
@@ -62,10 +62,8 @@ function finishGame(r,reason,instantWinnerId=null){
   const winner=r.players.find(p=>p.id===instantWinnerId);
   if(winner)winners=[winner];
  }else{
-  const bestCash=sorted[0]?.cash??0;
-  const cashLeaders=sorted.filter(p=>p.cash===bestCash);
-  const bestCredits=Math.max(...cashLeaders.map(p=>p.credits||0));
-  winners=cashLeaders.filter(p=>(p.credits||0)===bestCredits);
+  // แสดงผู้ชนะเพียงคนเดียว: เงินมากที่สุด แล้วใช้เครดิตตัดสิน; หากเสมอสนิทใช้ลำดับผู้เล่นในห้อง
+  if(sorted[0])winners=[sorted[0]];
  }
  const winnerRule=instantWinnerId?'เครดิตครบ 50 ชนะทันที':'เงินคงเหลือมากที่สุด หากเงินเท่ากันใช้เครดิตตัดสิน';
  io.to(r.code).emit('gameOver',{
@@ -119,7 +117,7 @@ io.on('connection',s=>{
  s.on('create',({name,pawn})=>{
   if(!PAWNS.includes(pawn))return s.emit('errorMessage','กรุณาเลือกตัวหมากก่อนสร้างห้อง');
   const code=Math.random().toString(36).slice(2,8).toUpperCase();
-  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:2500,credits:0,pos:0,assets:[],alive:true};
+  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:1500,credits:0,pos:0,assets:[],alive:true};
   const r={code,host:s.id,players:[p],current:0,started:false,countdown:false,startedAt:null,rolled:false,dice:null,moving:null,turnSeq:0,pendingTimer:null,owners:{},pending:null,pm25:0,meeting:null,meetingsDone:[],meetingCount:0,nextMeetingThreshold:50};
   rooms.set(code,r);s.join(code);s.emit('message','สร้างห้องแล้ว! แชร์รหัสห้อง '+code+' ให้เพื่อน');pub(r);
  });
@@ -136,7 +134,7 @@ io.on('connection',s=>{
   if(!PAWNS.includes(pawn))return s.emit('errorMessage','กรุณาเลือกตัวหมาก');
   if(r.players.some(p=>p.id===s.id))return;
   if(r.players.some(p=>p.pawn===pawn))return s.emit('pawnUnavailable',{takenPawns:r.players.map(p=>p.pawn),message:'ตัวหมากนี้มีผู้เล่นเลือกแล้ว กรุณาเลือกตัวอื่น'});
-  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:2500,credits:0,pos:0,assets:[],alive:true};
+  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:1500,credits:0,pos:0,assets:[],alive:true};
   r.players.push(p);s.join(r.code);msg(r,p.name+' เข้าร่วมห้อง');pub(r);
  });
  s.on('start',({room})=>{
@@ -148,7 +146,7 @@ io.on('connection',s=>{
   setTimeout(()=>{
    if(!rooms.has(r.code)||!r.countdown)return;
    r.countdown=false;r.started=true;r.startedAt=Date.now();r.current=0;r.rolled=false;r.dice=null;
-   msg(r,'เริ่มเกมแล้ว! เวลาเล่น 20 นาที เริ่มต้นคนละ 2,500 บาท');pub(r);
+   msg(r,'เริ่มเกมแล้ว! เวลาเล่น 20 นาที เริ่มต้นคนละ 1,500 บาท');pub(r);
   },3000);
  });
  s.on('roll',({room})=>{

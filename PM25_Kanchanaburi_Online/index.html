@@ -5,9 +5,9 @@
 <title>PM2.5 KANCHANABURI — Pixel Adventure</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Prompt:wght@400;500;600;700;800&display=swap');
-:root{--gold:#f5d27a;--ink:#102a2d;--panel:#102b30ee;--line:#789d8d;--red:#ef5b54;--blue:#55a9ed;--green:#65cb86;--yellow:#f0cf5d}
+:root{--gold:#ffe16b;--ink:#15364a;--panel:#123d50ee;--line:#65d6c5;--red:#ff6b6b;--blue:#43bde8;--green:#62d68b;--yellow:#ffd447}
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:#102b30;color:#f7f1d9;font-family:Prompt,system-ui,sans-serif}
+html,body{margin:0;min-height:100%;background:#123d50;color:#fffdf2;font-family:Prompt,system-ui,sans-serif}
 body{min-height:100vh;background:linear-gradient(#08232c55,#08232c99),url('background-kanchanaburi.png') center/cover fixed;overflow-x:hidden}
 button,input{font:inherit}
 button{cursor:pointer}
@@ -25,12 +25,12 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .pmoney{font-weight:900;color:#ffe39a;font-size:21px;line-height:1.25}
 .pmeta{font-size:13px;color:#d6e8df;font-weight:700}
 .board-stage{display:flex;justify-content:center;align-items:center;gap:14px}
-#board{width:min(90vw,1180px);aspect-ratio:1.12;display:grid;grid-template-columns:repeat(11,minmax(0,1fr));grid-template-rows:repeat(11,minmax(0,1fr));gap:3px;padding:8px;background:#173d35;border:5px solid #b5a16a;box-shadow:inset 0 0 0 4px #476c58,7px 7px 0 #06191c;image-rendering:pixelated;position:relative}
-.tile{min-width:0;min-height:0;position:relative;background:#ffffff;color:#172b2b;border:3px solid #d8dedb;box-shadow:0 2px 0 #263f36;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:3px 2px;overflow:hidden}
+#board{width:min(90vw,1180px);aspect-ratio:1.12;display:grid;grid-template-columns:repeat(11,minmax(0,1fr));grid-template-rows:repeat(11,minmax(0,1fr));gap:3px;padding:8px;background:#146b68;border:5px solid #ffd447;box-shadow:inset 0 0 0 4px #476c58,7px 7px 0 #06191c;image-rendering:pixelated;position:relative}
+.tile{min-width:0;min-height:0;position:relative;background:#fffef4;color:#102b3a;border:3px solid #8bded0;box-shadow:0 2px 0 #263f36;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:3px 2px;overflow:hidden}
 .tile .stripe{height:7px;width:100%;position:absolute;top:0;left:0}
-.tile strong{font-size:clamp(9px,1vw,16px);line-height:1.2;margin-top:6px;overflow-wrap:anywhere}
-.tile small{font-size:clamp(8px,.78vw,12px);font-weight:800;margin-top:2px}
-.tile .owner{font-size:clamp(7px,.62vw,10px);font-weight:800;overflow:hidden;max-width:100%;white-space:nowrap}
+.tile strong{font-size:clamp(11px,1.12vw,18px);line-height:1.25;margin-top:7px;overflow-wrap:anywhere;font-weight:900;text-shadow:0 1px #fff}
+.tile small{font-size:clamp(9px,.88vw,14px);font-weight:900;margin-top:3px;color:#183c4a}
+.tile .owner{font-size:clamp(8px,.72vw,12px);font-weight:800;overflow:hidden;max-width:100%;white-space:nowrap}
 .tile.current{outline:3px solid #ffe57c;outline-offset:-3px;filter:brightness(1.12);z-index:1}
 .tokens{display:flex;position:absolute;bottom:0;right:0;gap:0}
 .token{width:clamp(14px,1.8vw,26px);height:clamp(20px,2.5vw,34px);object-fit:contain;image-rendering:pixelated}
@@ -45,7 +45,7 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .bottom-bar{max-width:1380px;margin:10px auto 0;display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
 .panel{background:#102b30ed;border:2px solid var(--line);padding:9px 12px;box-shadow:3px 3px #06191c}
 .dice{display:flex;justify-content:center;gap:10px}
-.die{width:54px;height:54px;background:linear-gradient(145deg,#fff,#e9e6df);color:#171717;border-radius:13px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:8px;gap:2px;box-shadow:inset -3px -4px 7px #bdbab3,0 5px 0 #aaa69c,0 8px 12px #06191c88;border:1px solid #d0ccc4;transform:rotate(-5deg)}
+.die{width:60px;height:60px;background:linear-gradient(145deg,#fff,#e9e6df);color:#171717;border-radius:13px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:8px;gap:2px;box-shadow:inset -3px -4px 7px #bdbab3,0 5px 0 #aaa69c,0 8px 12px #06191c88;border:1px solid #d0ccc4;transform:rotate(-5deg)}
 .die:nth-child(2){transform:rotate(5deg)}
 .die .pip{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#555,#050505 65%);align-self:center;justify-self:center;box-shadow:inset 0 1px 2px #ffffff55}
 .die.rolling{animation:diceTumble .42s linear infinite;filter:drop-shadow(0 0 7px #ffe39a);}
@@ -122,7 +122,7 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 #turnNotice{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:#071a1dcc;pointer-events:none}
 #turnNotice span{background:#173b3e;border:3px solid var(--gold);padding:22px 30px;color:#ffe39a;font-size:clamp(20px,4vw,34px);font-weight:800;box-shadow:8px 8px #061719}
 @media(max-width:800px){#game{padding:8px}.playerbar{grid-template-columns:repeat(2,minmax(0,1fr))}#board{width:96vw;aspect-ratio:1.05;}.bottom-bar{grid-template-columns:1fr}.roomtag{text-align:center}.log{max-height:65px}}
-@media(max-width:480px){.topbar{height:auto;min-height:60px;padding:8px 12px}.tag{font-size:8px}.player{min-height:60px;padding:5px}.avatar{width:36px;height:45px}.pname{font-size:11px}.pmoney{font-size:12px}.pmeta{font-size:9px}.tile{padding:1px}.tile .stripe{height:4px}.tile strong{font-size:8px}.tile small{font-size:7px}.center .hint{font-size:9px}.bottom-bar{margin-top:7px}}
+@media(max-width:480px){.topbar{height:auto;min-height:60px;padding:8px 12px}.tag{font-size:8px}.player{min-height:60px;padding:5px}.avatar{width:36px;height:45px}.pname{font-size:11px}.pmoney{font-size:12px}.pmeta{font-size:9px}.tile{padding:1px}.tile .stripe{height:4px}.tile strong{font-size:9px}.tile small{font-size:8px}.center .hint{font-size:9px}.bottom-bar{margin-top:7px}}
 
 .die.rolling{animation:diceTumble .42s linear infinite;filter:drop-shadow(0 0 7px #ffe39a);}
 @keyframes diceTumble{0%{transform:translateY(0) rotate(0) scale(1)}25%{transform:translateY(-13px) rotate(95deg) scale(1.12)}50%{transform:translateY(0) rotate(190deg) scale(.96)}75%{transform:translateY(-7px) rotate(275deg) scale(1.08)}100%{transform:translateY(0) rotate(360deg) scale(1)}}
@@ -131,6 +131,8 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .tile.current{animation:tilePulse .65s ease-in-out 2}
 @keyframes tilePulse{50%{filter:brightness(1.3);box-shadow:0 0 0 3px #ffe27b}}
 @media(prefers-reduced-motion:reduce){.die.rolling,.token.walking,.tile.current{animation:none}}
+@keyframes championBurst{0%{opacity:1;transform:translate(-50%,-50%) scale(.2) rotate(0)}100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),calc(-50% + var(--dy,0px))) scale(1) rotate(720deg)}}
+.player{background:#123d50f2;border-color:var(--player-color,#65d6c5)}.panel{background:#123d50f2;border-color:#65d6c5}.btn{background:linear-gradient(135deg,#ffe16b,#ffb84d);color:#17364a}.alt{background:#167d82;border-color:#7de5d6}
 </style>
 </head>
 <body>
@@ -186,7 +188,7 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
  </div>
  <div class="bottom-bar">
   <div class="panel"><div class="roomtag" id="roomLabel">ROOM —</div><div class="log" id="log">ยินดีต้อนรับสู่การผจญภัยกาญจนบุรี!</div></div>
-  <div class="panel"><div class="dice"><div class="die" id="d1" data-value="1" aria-label="ลูกเต๋า 1"></div><div class="die" id="d2" data-value="1" aria-label="ลูกเต๋า 1"></div></div><div class="controls" style="margin-top:8px"><button class="btn" id="roll" disabled>🎲 ทอยลูกเต๋า</button><button class="alt" id="assets">ทรัพย์สิน</button></div></div>
+  <div class="panel"><div class="dice"><div class="die" id="d1" data-value="1" aria-label="ลูกเต๋า 1"></div><div class="die" id="d2" data-value="1" aria-label="ลูกเต๋า 1"></div></div><div id="diceResult" style="text-align:center;font-weight:900;font-size:18px;color:#ffe16b;min-height:28px;margin-top:5px" aria-live="polite">ทอยลูกเต๋าเพื่อเริ่มเดิน</div><div class="controls" style="margin-top:8px"><button class="btn" id="roll" disabled>🎲 ทอยลูกเต๋า</button><button class="alt" id="assets">ทรัพย์สิน</button></div></div>
   <div class="panel" style="text-align:center"><div id="status" style="font-weight:800;color:#ffe39a">รอผู้เล่นเข้าร่วมห้อง</div><div class="hint" id="share"></div></div>
  </div>
 </main>
@@ -273,7 +275,7 @@ function showMeeting(meeting){$('modal').dataset.meetingShown='1';
       {text:'ปฏิเสธ',alt:true,fn:()=>{socket.emit('meetingAnswer',{room,answer:'reject'});modal('ส่งคำตอบแล้ว',art+'<div class="meeting-copy">คุณเลือกปฏิเสธมาตรการแล้ว กรุณารอผู้เล่นคนอื่นตอบ</div>',[{text:'รอ',fn:()=>{}}]);$('dialog').classList.add('meeting-dialog');}}
    ];
   modal(forced?'🚨 ประชุมบังคับยืนยันมาตรการ':'⚠️ PM2.5 ถึงเกณฑ์แล้ว',
-   art+'<div class="meeting-alert">PM2.5 ถึง '+meeting.threshold+' หน่วยแล้ว</div><div class="meeting-copy">'+explanation+'<br><br>ผู้ที่ยืนยันจะจ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 5 หน่วยต่อคนที่ยืนยัน</div>',
+   art+'<div class="meeting-alert">PM2.5 ถึง '+meeting.threshold+' หน่วยแล้ว</div><div class="meeting-copy">'+explanation+'<br><br>ผู้ที่ยืนยันจะจ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วยต่อคนที่ยืนยัน</div>',
    buttons);
  }
  $('dialog').classList.add('meeting-dialog');
@@ -381,23 +383,26 @@ function connect(){
   if(!state)return;
   displayedDice=m.dice||displayedDice;
   $('d1').classList.add('rolling');$('d2').classList.add('rolling');
-  moveLock=true;displayedPositions.set(m.playerId,m.from);
+  moveLock=true;
   try{
+   // แสดงผลลูกเต๋าก่อนเริ่มเดิน เพื่อให้ผู้เล่นเห็นแต้มชัดเจน
+   await sleep(900);
+   const value=v=>({'⚀':1,'⚁':2,'⚂':3,'⚃':4,'⚄':5,'⚅':6}[v]||1);
+   const first=value(displayedDice?.[0]),second=value(displayedDice?.[1]);
+   drawDie('d1',first);drawDie('d2',second);
+   $('d1').classList.remove('rolling');$('d2').classList.remove('rolling');
+   $('diceResult').textContent=`🎲 ได้ ${first} + ${second} = ${first+second} แต้ม`;
+   await sleep(1100);
+   displayedPositions.set(m.playerId,m.from);
    for(let step=1;step<=m.steps;step++){
     displayedPositions.set(m.playerId,(m.from+step)%40);
     render();await sleep(190);
    }
    await sleep(250);
-   const value=v=>({'⚀':1,'⚁':2,'⚂':3,'⚃':4,'⚄':5,'⚅':6}[v]||1);
-   drawDie('d1',value(displayedDice?.[0]));drawDie('d2',value(displayedDice?.[1]));
   }finally{
    $('d1').classList.remove('rolling');$('d2').classList.remove('rolling');
    displayedPositions.delete(m.playerId);moveLock=false;render();
-   // เว้นจังหวะชัดเจน 3 วินาทีหลังเดินถึงช่อง ก่อนเปิดหน้าต่างซื้อ/เปลี่ยนตา
-   if(m.playerId===myId){
-    await sleep(3000);
-    socket.emit('movementComplete',{room,turnId:m.turnId});
-   }
+   if(m.playerId===myId){await sleep(3000);socket.emit('movementComplete',{room,turnId:m.turnId});}
   }
 });
 socket.on('meetingEnd',()=>close());
@@ -441,7 +446,7 @@ socket.on('state',s=>{
   }
  });
  socket.on('gameOver',w=>{
- victorySound();
+ victorySound();championCelebration();
  const winners=(w.winners||[]).join(' และ ');
  const winnerSet=new Set(w.winners||[]);
  const rows=(w.standings||[]).map((p,i)=>`<tr class="${winnerSet.has(p.name)?'is-winner':''}">
@@ -470,7 +475,7 @@ function showRules(){
  ช่องเหล่านี้ไม่เพิ่มเครดิตและไม่เปลี่ยนค่า PM2.5
  <h3>🌫️ การประชุม PM2.5</h3>
  เมื่อ PM2.5 ถึง 50 หน่วย จะเริ่มประชุม ผู้เล่นเลือกยืนยันหรือปฏิเสธ
- ยืนยัน: จ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 5 หน่วยต่อผู้เล่นที่ยืนยัน
+ ยืนยัน: จ่าย 300 บาท ได้เครดิต +10 และลด PM2.5 10 หน่วยต่อผู้เล่นที่ยืนยัน
  หากไม่มีใครยืนยัน ค่า PM2.5 จะคงเดิม และจะเรียกประชุมอีกครั้งเมื่อถึง 60 หน่วย โดยรอบ 60 เป็นการประชุมบังคับยืนยัน
  เมื่อมีผู้ยืนยันแล้ว ค่า PM2.5 จะลดตามจำนวนคนที่ยืนยัน และรอให้ค่า PM2.5 เพิ่มกลับถึง 50 เพื่อเริ่มประชุมรอบใหม่
  หากเงินไม่ถึง 300 บาท จะยืนยันไม่ได้
@@ -500,7 +505,7 @@ $('join').onclick=()=>{
 $('startGame').onclick=()=>socket.emit('start',{room});$('hostStart').onclick=()=>socket.emit('start',{room});
 $('roll').onclick=()=>{
  if($('roll').disabled)return;
- $('roll').disabled=true;displayedDice=null;$('d1').classList.add('rolling');$('d2').classList.add('rolling');
+ $('roll').disabled=true;displayedDice=null;$('diceResult').textContent='กำลังทอยลูกเต๋า…';$('d1').classList.add('rolling');$('d2').classList.add('rolling');
  diceSound();socket.emit('roll',{room});
  setTimeout(()=>{if(!displayedDice){$('d1').classList.remove('rolling');$('d2').classList.remove('rolling');$('roll').disabled=false}},5000);
 };
@@ -523,6 +528,20 @@ function meetingSound(){
  }catch(e){}
  [784,659,784,988].forEach((f,i)=>setTimeout(()=>playTone(f,.22,'sine',.11),i*180));
 }
+function championCelebration(){
+ const old=document.getElementById('championFx');if(old)old.remove();
+ const layer=document.createElement('div');layer.id='championFx';layer.setAttribute('aria-hidden','true');
+ layer.style.cssText='position:fixed;inset:0;z-index:19;pointer-events:none;overflow:hidden';
+ const colors=['#ffe16b','#ff6b6b','#43bde8','#62d68b','#c58bff','#fff'];
+ for(let i=0;i<90;i++){
+  const bit=document.createElement('i');const angle=Math.random()*Math.PI*2;const distance=35+Math.random()*65;
+  bit.style.cssText=`position:absolute;left:50%;top:50%;width:${5+Math.random()*8}px;height:${8+Math.random()*12}px;background:${colors[i%colors.length]};border-radius:2px;opacity:0;transform:translate(-50%,-50%);animation:championBurst ${900+Math.random()*1100}ms cubic-bezier(.1,.7,.2,1) ${Math.random()*250}ms forwards`;
+  bit.dataset.dx=Math.cos(angle)*distance+'vw';bit.dataset.dy=Math.sin(angle)*distance+'vh';layer.appendChild(bit);
+ }
+ document.body.appendChild(layer);
+ layer.querySelectorAll('i').forEach(bit=>{bit.animate([{transform:'translate(-50%,-50%) scale(.2) rotate(0deg)',opacity:1},{transform:`translate(calc(-50% + ${bit.dataset.dx}),calc(-50% + ${bit.dataset.dy})) scale(1) rotate(720deg)`,opacity:0}],{duration:1500+Math.random()*900,easing:'cubic-bezier(.1,.7,.2,1)',fill:'forwards'});});
+ setTimeout(()=>layer.remove(),3200);
+}
 function victorySound(){
  try{
   audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
@@ -531,6 +550,7 @@ function victorySound(){
  const notes=[523.25,659.25,783.99,1046.5,783.99,1046.5,1318.51];
  notes.forEach((f,i)=>setTimeout(()=>playTone(f,.28,'triangle',.13),i*145));
  setTimeout(()=>playTone(1567.98,.55,'sine',.12),1100);
+ [2093,2637,3136].forEach((f,i)=>setTimeout(()=>playTone(f,.32,'sine',.09),1450+i*120));
 }
 function cashChaChingSound(){
  try{
