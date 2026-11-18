@@ -93,7 +93,24 @@ h1{font:clamp(14px,2vw,23px) 'Press Start 2P',monospace;color:var(--gold);margin
 .winner-table{width:100%;border-collapse:collapse;background:#062c2ddd;color:#fff;margin:12px 0;font-size:clamp(12px,2vw,16px)}
 .tile-pm{display:block;color:#287b58;font-weight:900;font-size:10px;margin-top:2px}.winner-table th,.winner-table td{border:1px solid #e9c56a;padding:9px 7px;text-align:center}
 .winner-table th{background:#94631d;color:#fff2c7}
-.winner-table tr.is-winner{background:#6b4b18dd;color:#fff1a9;font-weight:900}
+/* แถบอันดับใช้สีแยกชัดเจน: ทอง / เงิน / ทองแดง / ปกติ */
+.winner-table tbody tr{transition:filter .18s ease,transform .18s ease}
+.winner-table tbody tr.rank-1{background:linear-gradient(90deg,#f5c542,#ffe994 48%,#e9ae27);color:#392400;font-weight:1000;text-shadow:0 1px #fff5c5}
+.winner-table tbody tr.rank-1 td{border-color:#fff0a1;border-top:2px solid #fff0a1;border-bottom:2px solid #c78a12}
+.winner-table tbody tr.rank-2{background:linear-gradient(90deg,#89959e,#e5ebef 48%,#aeb9c1);color:#1e2b33;font-weight:900}
+.winner-table tbody tr.rank-2 td{border-color:#f5f8fa}
+.winner-table tbody tr.rank-3{background:linear-gradient(90deg,#9b5429,#d9955c 48%,#b96b36);color:#fff8ed;font-weight:900}
+.winner-table tbody tr.rank-3 td{border-color:#f3c49b}
+.winner-table tbody tr.rank-4{background:#073a38dd;color:#e8f5ef;font-weight:700}
+.winner-table tbody tr.champion-row{outline:4px solid #fff7bd;outline-offset:-4px;box-shadow:inset 0 0 0 2px #f6c542}
+.winner-table .champion-tag{display:inline-block;margin:3px 0 0 5px;padding:3px 8px;border:1px solid #fff0a1;border-radius:99px;background:#fff2b8;color:#573600;font-size:.82em;font-weight:1000;white-space:nowrap;text-shadow:none}
+.winner-champion-banner{margin:10px auto 14px;padding:12px 16px;width:min(660px,100%);border:3px solid #fff0a1;border-radius:12px;background:linear-gradient(120deg,#7b4b08,#f5c542 35%,#ffeaa0 52%,#d99a20 78%,#704208);color:#392300;box-shadow:0 0 0 4px #8b5a16,0 7px 22px #0009,inset 0 0 16px #fff8b0;text-shadow:0 1px #fff5c6}
+.winner-champion-label{font-size:clamp(13px,2vw,18px);font-weight:1000;letter-spacing:2px}
+.winner-champion-name{font-size:clamp(25px,4.2vw,42px);font-weight:1000;line-height:1.25;margin-top:4px}
+.winner-rank-legend{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:7px 0 2px;font-size:12px;font-weight:900}
+.winner-rank-legend span{padding:4px 9px;border-radius:6px;border:1px solid #ffffff66}
+.winner-rank-legend .gold{background:#f5c542;color:#392400}.winner-rank-legend .silver{background:#cbd3d9;color:#1e2b33}.winner-rank-legend .bronze{background:#b96b36;color:#fff}.winner-rank-legend .normal{background:#073a38;color:#e8f5ef}
+@media(max-width:600px){.winner-table th,.winner-table td{padding:7px 4px}.winner-table .champion-tag{display:block;width:max-content;margin:4px auto 0}.winner-champion-banner{padding:9px}}
 .rules-copy{text-align:left;line-height:1.7}
 .dialog.rules-dialog{
  width:min(620px,92vw);
@@ -442,7 +459,11 @@ socket.on('meetingAnswerResult',result=>{
   }
   if(state?.meeting)showMeeting(state.meeting);
  });
-socket.on('meetingEnd',()=>close());
+socket.on('meetingEnd',info=>{
+  if(state){state.meeting=null;state.rolled=false;state.dice=null;if(typeof info?.pm25==='number')state.pm25=info.pm25;render();}
+  $('modal').dataset.meetingShown='';
+  close();
+ });
   socket.on('timerTick',t=>{if(state){state.elapsedSeconds=t.elapsedSeconds;state.pm25=t.pm25;updateTimer()}});
   socket.on('message',m=>log(m));
   socket.on('gameCountdown',c=>{if($('startGame'))$('startGame').disabled=true;if($('hostStart'))$('hostStart').disabled=true;showCountdown(c.seconds||3).finally(()=>{if($('startGame'))$('startGame').disabled=false;if($('hostStart'))$('hostStart').disabled=false})});
@@ -485,15 +506,24 @@ socket.on('state',s=>{
  });
  socket.on('gameOver',w=>{
  victorySound();championCelebration();
- const winners=(w.winners||[]).join(' และ ');
- const winnerSet=new Set(w.winners||[]);
- const rows=(w.standings||[]).map((p,i)=>`<tr class="${winnerSet.has(p.name)?'is-winner':''}">
-  <td>${i+1}</td><td>${p.name}${winnerSet.has(p.name)?' 👑':''}</td>
-  <td>${Number(p.cash||0).toLocaleString()} ฿</td><td>${Number(p.credits||0)}</td><td>${Number(p.assets||0)}</td></tr>`).join('');
- const table='<table class="winner-table"><thead><tr><th>อันดับ</th><th>ชื่อผู้เล่น</th><th>เงินคงเหลือ</th><th>เครดิต</th><th>พื้นที่</th></tr></thead><tbody>'+rows+'</tbody></table>';
+ const standings=w.standings||[];
+ const winnerName=w.winnerName||(standings.find(p=>String(p.id)===String(w.winnerId))||{}).name||(w.winners||[])[0]||'ผู้ชนะ';
+ const winnerIndex=standings.findIndex(p=>w.winnerId!=null?String(p.id)===String(w.winnerId):p.name===winnerName);
+ const rows=standings.map((p,i)=>{
+  const isChampion=winnerIndex===i;
+  const rank=Math.min(i+1,4);
+  const medal=['🥇','🥈','🥉',''][rank-1];
+  const rankClass=`rank-${rank}`;
+  return `<tr class="${rankClass}${isChampion?' champion-row':''}">
+   <td><strong>${medal?medal+' ':''}${i+1}</strong></td>
+   <td><strong>${p.name}</strong>${isChampion?'<span class="champion-tag">🏆 ผู้ชนะ</span>':''}</td>
+   <td>${Number(p.cash||0).toLocaleString()} ฿</td><td>${Number(p.credits||0)}</td><td>${Number(p.assets||0)}</td></tr>`;
+ }).join('');
+ const table='<div class="winner-rank-legend"><span class="gold">🥇 อันดับ 1</span><span class="silver">🥈 อันดับ 2</span><span class="bronze">🥉 อันดับ 3</span><span class="normal">อันดับ 4</span></div><table class="winner-table"><thead><tr><th>อันดับ</th><th>ชื่อผู้เล่น</th><th>เงินคงเหลือ</th><th>เครดิต</th><th>พื้นที่</th></tr></thead><tbody>'+rows+'</tbody></table>';
  const rule=w.winnerRule||'เงินคงเหลือมากที่สุด หากเงินเท่ากันใช้เครดิตตัดสิน';
  const detail=w.instant?'<b>ชนะทันที! เครดิตครบ 50 คะแนน</b>':'หมดเวลา 20 นาที — ตัดสินจากเงินสดก่อน แล้วใช้เครดิตเมื่อเงินเท่ากัน';
- modal('🏆 จบเกม',`<div class="winner-crown">👑🏆👑</div><div class="winner-title">ผู้ชนะ: ${winners}</div>
+ modal('🏆 จบเกม',`<div class="winner-crown">👑🏆👑</div><div class="winner-title">🏆 CHAMPION 🏆</div>
+  <div class="winner-champion-banner"><div class="winner-champion-label">อันดับหนึ่งของเกม • ผู้ชนะ</div><div class="winner-champion-name">${winnerName}</div></div>
   <div><b>${w.reason||'จบเกม'}</b><br>${detail}</div>${table}<div><b>เกณฑ์ตัดสิน:</b> ${rule}</div>`,
   [{text:'ปิด',fn:close}]);
 });

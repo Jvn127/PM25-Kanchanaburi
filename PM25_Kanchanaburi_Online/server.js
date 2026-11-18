@@ -68,12 +68,14 @@ function finishGame(r,reason,instantWinnerId=null){
  const winnerRule=instantWinnerId?'เครดิตครบ 50 ชนะทันที':'เงินคงเหลือมากที่สุด หากเงินเท่ากันใช้เครดิตตัดสิน';
  io.to(r.code).emit('gameOver',{
   winners:winners.map(p=>p.name),
+  winnerId:winners[0]?.id||null,
+  winnerName:winners[0]?.name||'',
   cash:winners[0]?.cash||0,
   credits:winners[0]?.credits||0,
   reason,
   winnerRule,
   instant:!!instantWinnerId,
-  standings:sorted.map(p=>({name:p.name,cash:p.cash,credits:p.credits,assets:p.assets.length}))
+  standings:sorted.map(p=>({id:p.id,name:p.name,cash:p.cash,credits:p.credits,assets:p.assets.length}))
  });
  msg(r,reason||'จบเกม');pub(r);
 }
@@ -97,6 +99,51 @@ function maybeMeetingOrFinish(r){
   beginMeeting(r,(r.meetingCount||0)+1,r.nextMeetingThreshold||50);
  }
 }
+// คำนวณเกณฑ์ประชุมครั้งถัดไปโดยต้องมากกว่า PM2.5 ปัจจุบันเสมอ
+// ป้องกันการเปิดประชุมซ้ำทันทีหลังผู้เล่นทุกคนปฏิเสธหรือไม่มีเงินยืนยัน
+function calculateNextMeetingThreshold(oldThreshold,confirmations,currentPm25){
+ const pm=Math.max(0,Number(currentPm25)||0);
+ const threshold=Number(oldThreshold)||50;
+ if(confirmations===0){
+  // คงกติกาเดิม: ถ้าไม่มีใครยืนยันในรอบ 50 ให้มีรอบบังคับที่ 60
+  if(threshold===50)return 60;
+  // หลังรอบบังคับ 60 หรือรอบถัด ๆ ไป ต้องตั้งเกณฑ์สูงกว่า PM ปัจจุบัน
+  // เพื่อไม่ให้เปิดหน้าประชุมซ้ำทันทีจนผู้เล่นไม่มีโอกาสทอยเต๋า
+  return Math.max(threshold+10,pm+1,70);
+ }
+ // หาก PM หลังลดฝุ่นยังตั้งแต่ 50 ขึ้นไป ให้รอจนค่าเพิ่มขึ้นอีกก่อนเปิดประชุมใหม่
+ return pm<50?50:pm+1;
+}
+function finishMeetingIfReady(r){
+ const meeting=r?.meeting;
+ if(!meeting||!r.started)return false;
+ const activePlayers=r.players.filter(p=>p.connected!==false);
+ const allAnswered=activePlayers.every(p=>Object.prototype.hasOwnProperty.call(meeting.answers,p.id));
+ if(!allAnswered)return false;
+
+ const confirmations=activePlayers.filter(p=>meeting.answers[p.id]==='confirm').length;
+ const oldThreshold=meeting.threshold;
+ const reduction=confirmations*MEETING_REDUCTION;
+ if(reduction>0){
+  r.pm25=Math.max(0,r.pm25-reduction);
+  msg(r,`ผู้เล่นยืนยัน ${confirmations} คน ลดค่า PM2.5 รวม ${reduction} หน่วย`);
+ }else{
+  msg(r,'ไม่มีผู้เล่นยืนยันมาตรการ ค่า PM2.5 จึงคงเดิม');
+ }
+ r.meetingsDone.push(meeting.number);
+ r.meeting=null;
+ r.rolled=false;r.dice=null;r.pending=null;r.moving=null;
+ if(r.pendingTimer){clearTimeout(r.pendingTimer);r.pendingTimer=null;}
+ r.nextMeetingThreshold=calculateNextMeetingThreshold(oldThreshold,confirmations,r.pm25);
+
+ if(elapsed(r)>=GAME_SECONDS){finishGame(r,'หมดเวลา 20 นาที');return true;}
+ io.to(r.code).emit('meetingEnd',{number:meeting.number,confirmations,reduction,pm25:r.pm25,nextThreshold:r.nextMeetingThreshold});
+ msg(r,'ผู้เล่นตอบครบแล้ว กลับเข้าสู่เกม สามารถทอยลูกเต๋าต่อได้');
+ // ตรวจเกณฑ์อีกครั้งหลังตั้ง threshold ใหม่ หากยังเกิน PM ปัจจุบัน เกมจะไม่เปิดประชุมค้างซ้ำ
+ maybeMeetingOrFinish(r);
+ pub(r);
+ return true;
+}
 function land(r,p){
  const i=p.pos,[name,price]=places[i];msg(r,`${p.name} มาถึง ${name}`);
  if(i===0){return}
@@ -117,7 +164,7 @@ io.on('connection',s=>{
  s.on('create',({name,pawn})=>{
   if(!PAWNS.includes(pawn))return s.emit('errorMessage','กรุณาเลือกตัวหมากก่อนสร้างห้อง');
   const code=Math.random().toString(36).slice(2,8).toUpperCase();
-  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:1500,credits:0,pos:0,assets:[],alive:true};
+  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:1500,credits:0,pos:0,assets:[],alive:true,connected:true};
   const r={code,host:s.id,players:[p],current:0,started:false,countdown:false,startedAt:null,rolled:false,dice:null,moving:null,turnSeq:0,pendingTimer:null,owners:{},pending:null,pm25:0,meeting:null,meetingsDone:[],meetingCount:0,nextMeetingThreshold:50};
   rooms.set(code,r);s.join(code);s.emit('message','สร้างห้องแล้ว! แชร์รหัสห้อง '+code+' ให้เพื่อน');pub(r);
  });
@@ -134,7 +181,7 @@ io.on('connection',s=>{
   if(!PAWNS.includes(pawn))return s.emit('errorMessage','กรุณาเลือกตัวหมาก');
   if(r.players.some(p=>p.id===s.id))return;
   if(r.players.some(p=>p.pawn===pawn))return s.emit('pawnUnavailable',{takenPawns:r.players.map(p=>p.pawn),message:'ตัวหมากนี้มีผู้เล่นเลือกแล้ว กรุณาเลือกตัวอื่น'});
-  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:1500,credits:0,pos:0,assets:[],alive:true};
+  const p={id:s.id,name:String(name||'Engineer').slice(0,20),pawn,color:PAWN_COLORS[pawn],cash:1500,credits:0,pos:0,assets:[],alive:true,connected:true};
   r.players.push(p);s.join(r.code);msg(r,p.name+' เข้าร่วมห้อง');pub(r);
  });
  s.on('start',({room})=>{
@@ -254,42 +301,18 @@ io.on('connection',s=>{
   pub(r);
   // ตอบกลับหลังเซิร์ฟเวอร์บันทึกคำตอบแล้วเท่านั้น เพื่อไม่ให้หน้าเกมแสดงว่ายืนยันสำเร็จล่วงหน้า
   s.emit('meetingAnswerResult',{ok:true,answer,cash:p.cash,credits:p.credits});
-  if(r.players.every(x=>r.meeting.answers[x.id])){
-   const meeting=r.meeting;
-   const confirmations=Object.values(meeting.answers).filter(a=>a==='confirm').length;
-   const oldThreshold=meeting.threshold;
-   const reduction=confirmations*MEETING_REDUCTION;
-   if(reduction>0){
-    r.pm25=Math.max(0,r.pm25-reduction);
-    msg(r,`ผู้เล่นยืนยัน ${confirmations} คน ลดค่า PM2.5 รวม ${reduction} หน่วย`);
-   }else{
-    msg(r,'ไม่มีผู้เล่นยืนยันมาตรการ ค่า PM2.5 จึงคงเดิม');
-   }
-   r.meetingsDone.push(meeting.number);
-   r.meeting=null;
-   r.rolled=false;r.dice=null;r.pending=null;r.moving=null;
-   // หากไม่มีใครยืนยันในการประชุม 50 ให้มีรอบบังคับยืนยันที่ 60
-   if(oldThreshold===50&&confirmations===0){
-    r.nextMeetingThreshold=60;
-   }else if(oldThreshold===60&&confirmations===0){
-    // ป้องกันการเปิดประชุม 60 ซ้ำทันที หากทุกคนไม่มีเงินพอ
-    r.nextMeetingThreshold=Math.max(70,r.pm25+10);
-   }else{
-    // เมื่อมีผู้ยืนยันแล้ว ให้รอจน PM2.5 เพิ่มกลับมาถึง 50 อีกครั้ง
-    r.nextMeetingThreshold=50;
-   }
-   if(elapsed(r)>=GAME_SECONDS){finishGame(r,'หมดเวลา 20 นาที');return}
-   io.to(r.code).emit('meetingEnd',{number:meeting.number,confirmations,reduction,pm25:r.pm25});
-   msg(r,'ผู้เล่นตอบครบแล้ว กลับเข้าสู่เกม');
-   r.rolled=false;r.dice=null;r.pending=null;r.moving=null;
-   maybeMeetingOrFinish(r);pub(r);
-  }
+  finishMeetingIfReady(r);
  });
  s.on('disconnect',()=>{
  for(const r of rooms.values()){
   const p=r.players.find(x=>x.id===s.id);
   if(!p)continue;
   p.connected=false;msg(r,p.name+' หลุดการเชื่อมต่อ');
+  if(r.meeting){
+   finishMeetingIfReady(r);
+   pub(r);
+   continue;
+  }
   if(r.started&&current(r,s)){
    if(r.pending&&r.pending.player===s.id){msg(r,p.name+' หลุดระหว่างเลือกซื้อ ระบบผ่านพื้นที่ให้อัตโนมัติ');advance(r);}
    else if(r.moving===s.id&&r.pending&&r.pending.player===s.id){r.moving=null;msg(r,p.name+' หลุดระหว่างเดิน ระบบผ่านพื้นที่ให้อัตโนมัติ');advance(r);}
